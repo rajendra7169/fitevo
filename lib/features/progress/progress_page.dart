@@ -169,7 +169,7 @@ class _StreakAndBadges extends StatelessWidget {
         Text('BADGES', style: AppText.label),
         const SizedBox(height: 10),
         SizedBox(
-          height: 96,
+          height: 120,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: badges.length,

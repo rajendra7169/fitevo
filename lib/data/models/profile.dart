@@ -1,0 +1,56 @@
+import 'package:isar/isar.dart';
+import 'enums.dart';
+
+part 'profile.g.dart';
+
+@collection
+class Profile {
+  Id id = 0;
+
+  String displayName = '';
+
+  late int age;
+
+  @Enumerated(EnumType.name)
+  late Gender gender;
+
+  late double heightCm;
+  late double weightKg;
+
+  @Enumerated(EnumType.name)
+  late ActivityLevel activityLevel;
+
+  @Enumerated(EnumType.name)
+  late FitnessGoal goal;
+
+  late int trainingDaysPerWeek;
+
+  // Derived & cached
+  late double bmr;
+  late double tdee;
+  late int calorieTarget;
+  late int proteinTargetG;
+  late int carbTargetG;
+  late int fatTargetG;
+  late int fiberTargetG;
+  late int waterTargetMl;
+  late double bmi;
+
+  // User overrides (nullable — null means use derived value)
+  int? calorieOverride;
+  int? proteinOverride;
+  int? carbOverride;
+  int? fatOverride;
+  int? fiberOverride;
+  int? waterOverride;
+
+  DateTime createdAt = DateTime.now();
+  DateTime updatedAt = DateTime.now();
+
+  int get effectiveCalorieTarget => calorieOverride ?? calorieTarget;
+  int get effectiveProteinTarget => proteinOverride ?? proteinTargetG;
+  int get effectiveCarbTarget => carbOverride ?? carbTargetG;
+  int get effectiveFatTarget => fatOverride ?? fatTargetG;
+  int get effectiveFiberTarget => fiberOverride ?? fiberTargetG;
+  int get effectiveWaterTarget => waterOverride ?? waterTargetMl;
+}

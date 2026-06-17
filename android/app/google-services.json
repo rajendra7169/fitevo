@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "610372345422",
+    "project_id": "fitevo-8f355",
+    "storage_bucket": "fitevo-8f355.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610372345422:android:87983b724b4524a369ad1f",
+        "android_client_info": {
+          "package_name": "com.example.fitevo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "610372345422-mqnu486u8dj6vskr4pt9ghn0hrj8avuo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fitevo",
+            "certificate_hash": "25f5e4d66aeb819bc0d0ad15ce2824b25a5912b3"
+          }
+        },
+        {
+          "client_id": "610372345422-lp5ectge2etgf8sv9lft4d8tvg4padp1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCF26PGKHWcyzDP7sJSgr7z1E7dHXB5VSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "610372345422-lp5ectge2etgf8sv9lft4d8tvg4padp1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

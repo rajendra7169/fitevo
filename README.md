@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/logo/logo.png" alt="Fitevo logo" width="140" />
+
 # Fitevo
 
 **A free, local-first fitness, nutrition, and workout tracking app for beginner gym-goers.**

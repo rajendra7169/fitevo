@@ -24,8 +24,6 @@ migrate_working_dir/
 # Holds Gemini / Groq / USDA API keys for local development. Never commit.
 env.json
 
-# Assets copied from elsewhere (not source of truth)
-assets/logo/logo.png
 
 # Local env file holds API keys for --dart-define-from-file; never commit.
 env.json

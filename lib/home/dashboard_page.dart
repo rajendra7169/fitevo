@@ -15,6 +15,7 @@ import '../data/repositories/nutrition_repo.dart';
 import '../features/account/account_page.dart';
 import '../features/food/meal_actions_sheet.dart';
 import '../features/food/meal_suggestions_sheet.dart';
+import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
 import '../services/ai/ai_service.dart';
@@ -562,12 +563,19 @@ class _CalorieRing extends StatelessWidget {
     final progress = target == 0 ? 0.0 : (consumed / target);
 
     return Center(
-      child: SizedBox(
-        width: 250,
-        height: 250,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TodaysFoodPage()),
+          );
+        },
+        child: SizedBox(
+          width: 250,
+          height: 250,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
             // Soft glow behind the ring
             Container(
               width: 250,
@@ -619,9 +627,24 @@ class _CalorieRing extends StatelessWidget {
                         fontSize: 12,
                         color: AppColors.textTertiary,
                         fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('TAP FOR DETAILS',
+                        style: AppText.label.copyWith(
+                            fontSize: 9,
+                            color: AppColors.textTertiary,
+                            letterSpacing: 1.2)),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_rounded,
+                        size: 11, color: AppColors.textTertiary),
+                  ],
+                ),
               ],
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

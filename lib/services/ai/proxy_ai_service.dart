@@ -1,3 +1,5 @@
+// ignore_for_file: use_null_aware_elements
+// (isar_generator's bundled analyzer doesn't parse `'key': ?value` yet.)
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -56,7 +58,7 @@ class ProxyAiService implements AiService {
       {String? hint}) async {
     final json = await _postJson('/food/analyze-photo', {
       'imageBase64': base64Encode(imageBytes),
-      'hint': ?hint,
+      if (hint != null) 'hint': hint,
     });
     return _parseFoodAnalysis(json);
   }
@@ -116,7 +118,7 @@ class ProxyAiService implements AiService {
       'proteinGRemaining': proteinGRemaining,
       'carbsGRemaining': carbsGRemaining,
       'fatGRemaining': fatGRemaining,
-      'cuisineHint': ?cuisineHint,
+      if (cuisineHint != null) 'cuisineHint': cuisineHint,
     });
     final list = (json['suggestions'] as List?) ?? const [];
     return list.whereType<Map>().map((m) {

@@ -25,6 +25,14 @@ class Profile {
 
   late int trainingDaysPerWeek;
 
+  // Cardio sessions per week (running / cycling / HIIT etc.), separate
+  // from strength training days. Used to lift TDEE more accurately.
+  int cardioSessionsPerWeek = 0;
+
+  // Free-text body composition / focus areas (e.g. "skinny arms, belly
+  // fat, average legs"). Surfaced to the AI coach for better suggestions.
+  String bodyFocusNotes = '';
+
   // Derived & cached
   late double bmr;
   late double tdee;

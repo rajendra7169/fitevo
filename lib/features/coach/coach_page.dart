@@ -57,12 +57,16 @@ class _CoachPageState extends ConsumerState<CoachPage> {
     int sessionsThisWeek,
   ) {
     final goal = profile.goal.name;
+    final focus = profile.bodyFocusNotes.trim();
     return [
       'Name: ${profile.displayName.isEmpty ? "user" : profile.displayName}',
       'Goal: $goal',
       'Calorie target: ${profile.effectiveCalorieTarget} kcal',
       'Protein target: ${profile.effectiveProteinTarget}g',
       'Weight: ${profile.weightKg.toStringAsFixed(1)} kg',
+      'Strength training: ${profile.trainingDaysPerWeek} days/week',
+      'Cardio: ${profile.cardioSessionsPerWeek} sessions/week',
+      if (focus.isNotEmpty) 'Body focus: $focus',
       'Today so far: ${totals.calories} kcal, ${totals.proteinG}g protein',
       'Current streak: $streak days',
       'PRs achieved: $prCount',

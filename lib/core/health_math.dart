@@ -39,6 +39,10 @@ class ComputedTargets {
   });
 }
 
+/// Average calorie burn for a moderate-intensity cardio session
+/// (~45 min running / cycling). Used to bump TDEE per cardio session.
+const double _kcalPerCardioSession = 350;
+
 class HealthMath {
   static double bmr({
     required Gender gender,
@@ -95,10 +99,15 @@ class HealthMath {
     required double heightCm,
     required ActivityLevel activity,
     required FitnessGoal goal,
+    int cardioSessionsPerWeek = 0,
   }) {
     final b = bmr(
         gender: gender, age: age, weightKg: weightKg, heightCm: heightCm);
-    final t = b * activityFactor(activity);
+    final baseTdee = b * activityFactor(activity);
+    // Spread weekly cardio burn across days for a steady TDEE bump.
+    final cardioDailyBump =
+        (cardioSessionsPerWeek.clamp(0, 14) * _kcalPerCardioSession) / 7.0;
+    final t = baseTdee + cardioDailyBump;
 
     final maxDailyDelta =
         (weightKg * HealthConstants.maxWeightChangeFraction *

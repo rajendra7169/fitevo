@@ -38,140 +38,150 @@ const ProfileSchema = CollectionSchema(
       name: r'bmr',
       type: IsarType.double,
     ),
-    r'calorieOverride': PropertySchema(
+    r'bodyFocusNotes': PropertySchema(
       id: 4,
+      name: r'bodyFocusNotes',
+      type: IsarType.string,
+    ),
+    r'calorieOverride': PropertySchema(
+      id: 5,
       name: r'calorieOverride',
       type: IsarType.long,
     ),
     r'calorieTarget': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'calorieTarget',
       type: IsarType.long,
     ),
     r'carbOverride': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'carbOverride',
       type: IsarType.long,
     ),
     r'carbTargetG': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'carbTargetG',
       type: IsarType.long,
     ),
+    r'cardioSessionsPerWeek': PropertySchema(
+      id: 9,
+      name: r'cardioSessionsPerWeek',
+      type: IsarType.long,
+    ),
     r'createdAt': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'displayName': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'displayName',
       type: IsarType.string,
     ),
     r'effectiveCalorieTarget': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'effectiveCalorieTarget',
       type: IsarType.long,
     ),
     r'effectiveCarbTarget': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'effectiveCarbTarget',
       type: IsarType.long,
     ),
     r'effectiveFatTarget': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'effectiveFatTarget',
       type: IsarType.long,
     ),
     r'effectiveFiberTarget': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'effectiveFiberTarget',
       type: IsarType.long,
     ),
     r'effectiveProteinTarget': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'effectiveProteinTarget',
       type: IsarType.long,
     ),
     r'effectiveWaterTarget': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'effectiveWaterTarget',
       type: IsarType.long,
     ),
     r'fatOverride': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'fatOverride',
       type: IsarType.long,
     ),
     r'fatTargetG': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'fatTargetG',
       type: IsarType.long,
     ),
     r'fiberOverride': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'fiberOverride',
       type: IsarType.long,
     ),
     r'fiberTargetG': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'fiberTargetG',
       type: IsarType.long,
     ),
     r'gender': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'gender',
       type: IsarType.string,
       enumMap: _ProfilegenderEnumValueMap,
     ),
     r'goal': PropertySchema(
-      id: 21,
+      id: 23,
       name: r'goal',
       type: IsarType.string,
       enumMap: _ProfilegoalEnumValueMap,
     ),
     r'heightCm': PropertySchema(
-      id: 22,
+      id: 24,
       name: r'heightCm',
       type: IsarType.double,
     ),
     r'proteinOverride': PropertySchema(
-      id: 23,
+      id: 25,
       name: r'proteinOverride',
       type: IsarType.long,
     ),
     r'proteinTargetG': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'proteinTargetG',
       type: IsarType.long,
     ),
     r'tdee': PropertySchema(
-      id: 25,
+      id: 27,
       name: r'tdee',
       type: IsarType.double,
     ),
     r'trainingDaysPerWeek': PropertySchema(
-      id: 26,
+      id: 28,
       name: r'trainingDaysPerWeek',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 27,
+      id: 29,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'waterOverride': PropertySchema(
-      id: 28,
+      id: 30,
       name: r'waterOverride',
       type: IsarType.long,
     ),
     r'waterTargetMl': PropertySchema(
-      id: 29,
+      id: 31,
       name: r'waterTargetMl',
       type: IsarType.long,
     ),
     r'weightKg': PropertySchema(
-      id: 30,
+      id: 32,
       name: r'weightKg',
       type: IsarType.double,
     )
@@ -197,6 +207,7 @@ int _profileEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.activityLevel.name.length * 3;
+  bytesCount += 3 + object.bodyFocusNotes.length * 3;
   bytesCount += 3 + object.displayName.length * 3;
   bytesCount += 3 + object.gender.name.length * 3;
   bytesCount += 3 + object.goal.name.length * 3;
@@ -213,33 +224,35 @@ void _profileSerialize(
   writer.writeLong(offsets[1], object.age);
   writer.writeDouble(offsets[2], object.bmi);
   writer.writeDouble(offsets[3], object.bmr);
-  writer.writeLong(offsets[4], object.calorieOverride);
-  writer.writeLong(offsets[5], object.calorieTarget);
-  writer.writeLong(offsets[6], object.carbOverride);
-  writer.writeLong(offsets[7], object.carbTargetG);
-  writer.writeDateTime(offsets[8], object.createdAt);
-  writer.writeString(offsets[9], object.displayName);
-  writer.writeLong(offsets[10], object.effectiveCalorieTarget);
-  writer.writeLong(offsets[11], object.effectiveCarbTarget);
-  writer.writeLong(offsets[12], object.effectiveFatTarget);
-  writer.writeLong(offsets[13], object.effectiveFiberTarget);
-  writer.writeLong(offsets[14], object.effectiveProteinTarget);
-  writer.writeLong(offsets[15], object.effectiveWaterTarget);
-  writer.writeLong(offsets[16], object.fatOverride);
-  writer.writeLong(offsets[17], object.fatTargetG);
-  writer.writeLong(offsets[18], object.fiberOverride);
-  writer.writeLong(offsets[19], object.fiberTargetG);
-  writer.writeString(offsets[20], object.gender.name);
-  writer.writeString(offsets[21], object.goal.name);
-  writer.writeDouble(offsets[22], object.heightCm);
-  writer.writeLong(offsets[23], object.proteinOverride);
-  writer.writeLong(offsets[24], object.proteinTargetG);
-  writer.writeDouble(offsets[25], object.tdee);
-  writer.writeLong(offsets[26], object.trainingDaysPerWeek);
-  writer.writeDateTime(offsets[27], object.updatedAt);
-  writer.writeLong(offsets[28], object.waterOverride);
-  writer.writeLong(offsets[29], object.waterTargetMl);
-  writer.writeDouble(offsets[30], object.weightKg);
+  writer.writeString(offsets[4], object.bodyFocusNotes);
+  writer.writeLong(offsets[5], object.calorieOverride);
+  writer.writeLong(offsets[6], object.calorieTarget);
+  writer.writeLong(offsets[7], object.carbOverride);
+  writer.writeLong(offsets[8], object.carbTargetG);
+  writer.writeLong(offsets[9], object.cardioSessionsPerWeek);
+  writer.writeDateTime(offsets[10], object.createdAt);
+  writer.writeString(offsets[11], object.displayName);
+  writer.writeLong(offsets[12], object.effectiveCalorieTarget);
+  writer.writeLong(offsets[13], object.effectiveCarbTarget);
+  writer.writeLong(offsets[14], object.effectiveFatTarget);
+  writer.writeLong(offsets[15], object.effectiveFiberTarget);
+  writer.writeLong(offsets[16], object.effectiveProteinTarget);
+  writer.writeLong(offsets[17], object.effectiveWaterTarget);
+  writer.writeLong(offsets[18], object.fatOverride);
+  writer.writeLong(offsets[19], object.fatTargetG);
+  writer.writeLong(offsets[20], object.fiberOverride);
+  writer.writeLong(offsets[21], object.fiberTargetG);
+  writer.writeString(offsets[22], object.gender.name);
+  writer.writeString(offsets[23], object.goal.name);
+  writer.writeDouble(offsets[24], object.heightCm);
+  writer.writeLong(offsets[25], object.proteinOverride);
+  writer.writeLong(offsets[26], object.proteinTargetG);
+  writer.writeDouble(offsets[27], object.tdee);
+  writer.writeLong(offsets[28], object.trainingDaysPerWeek);
+  writer.writeDateTime(offsets[29], object.updatedAt);
+  writer.writeLong(offsets[30], object.waterOverride);
+  writer.writeLong(offsets[31], object.waterTargetMl);
+  writer.writeDouble(offsets[32], object.weightKg);
 }
 
 Profile _profileDeserialize(
@@ -255,32 +268,34 @@ Profile _profileDeserialize(
   object.age = reader.readLong(offsets[1]);
   object.bmi = reader.readDouble(offsets[2]);
   object.bmr = reader.readDouble(offsets[3]);
-  object.calorieOverride = reader.readLongOrNull(offsets[4]);
-  object.calorieTarget = reader.readLong(offsets[5]);
-  object.carbOverride = reader.readLongOrNull(offsets[6]);
-  object.carbTargetG = reader.readLong(offsets[7]);
-  object.createdAt = reader.readDateTime(offsets[8]);
-  object.displayName = reader.readString(offsets[9]);
-  object.fatOverride = reader.readLongOrNull(offsets[16]);
-  object.fatTargetG = reader.readLong(offsets[17]);
-  object.fiberOverride = reader.readLongOrNull(offsets[18]);
-  object.fiberTargetG = reader.readLong(offsets[19]);
+  object.bodyFocusNotes = reader.readString(offsets[4]);
+  object.calorieOverride = reader.readLongOrNull(offsets[5]);
+  object.calorieTarget = reader.readLong(offsets[6]);
+  object.carbOverride = reader.readLongOrNull(offsets[7]);
+  object.carbTargetG = reader.readLong(offsets[8]);
+  object.cardioSessionsPerWeek = reader.readLong(offsets[9]);
+  object.createdAt = reader.readDateTime(offsets[10]);
+  object.displayName = reader.readString(offsets[11]);
+  object.fatOverride = reader.readLongOrNull(offsets[18]);
+  object.fatTargetG = reader.readLong(offsets[19]);
+  object.fiberOverride = reader.readLongOrNull(offsets[20]);
+  object.fiberTargetG = reader.readLong(offsets[21]);
   object.gender =
-      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[20])] ??
+      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[22])] ??
           Gender.male;
   object.goal =
-      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[21])] ??
+      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[23])] ??
           FitnessGoal.buildMuscle;
-  object.heightCm = reader.readDouble(offsets[22]);
+  object.heightCm = reader.readDouble(offsets[24]);
   object.id = id;
-  object.proteinOverride = reader.readLongOrNull(offsets[23]);
-  object.proteinTargetG = reader.readLong(offsets[24]);
-  object.tdee = reader.readDouble(offsets[25]);
-  object.trainingDaysPerWeek = reader.readLong(offsets[26]);
-  object.updatedAt = reader.readDateTime(offsets[27]);
-  object.waterOverride = reader.readLongOrNull(offsets[28]);
-  object.waterTargetMl = reader.readLong(offsets[29]);
-  object.weightKg = reader.readDouble(offsets[30]);
+  object.proteinOverride = reader.readLongOrNull(offsets[25]);
+  object.proteinTargetG = reader.readLong(offsets[26]);
+  object.tdee = reader.readDouble(offsets[27]);
+  object.trainingDaysPerWeek = reader.readLong(offsets[28]);
+  object.updatedAt = reader.readDateTime(offsets[29]);
+  object.waterOverride = reader.readLongOrNull(offsets[30]);
+  object.waterTargetMl = reader.readLong(offsets[31]);
+  object.weightKg = reader.readDouble(offsets[32]);
   return object;
 }
 
@@ -302,21 +317,21 @@ P _profileDeserializeProp<P>(
     case 3:
       return (reader.readDouble(offset)) as P;
     case 4:
-      return (reader.readLongOrNull(offset)) as P;
-    case 5:
-      return (reader.readLong(offset)) as P;
-    case 6:
-      return (reader.readLongOrNull(offset)) as P;
-    case 7:
-      return (reader.readLong(offset)) as P;
-    case 8:
-      return (reader.readDateTime(offset)) as P;
-    case 9:
       return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readLongOrNull(offset)) as P;
+    case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
+      return (reader.readLongOrNull(offset)) as P;
+    case 8:
+      return (reader.readLong(offset)) as P;
+    case 9:
+      return (reader.readLong(offset)) as P;
     case 10:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 11:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 12:
       return (reader.readLong(offset)) as P;
     case 13:
@@ -326,7 +341,7 @@ P _profileDeserializeProp<P>(
     case 15:
       return (reader.readLong(offset)) as P;
     case 16:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
@@ -334,28 +349,32 @@ P _profileDeserializeProp<P>(
     case 19:
       return (reader.readLong(offset)) as P;
     case 20:
+      return (reader.readLongOrNull(offset)) as P;
+    case 21:
+      return (reader.readLong(offset)) as P;
+    case 22:
       return (_ProfilegenderValueEnumMap[reader.readStringOrNull(offset)] ??
           Gender.male) as P;
-    case 21:
+    case 23:
       return (_ProfilegoalValueEnumMap[reader.readStringOrNull(offset)] ??
           FitnessGoal.buildMuscle) as P;
-    case 22:
-      return (reader.readDouble(offset)) as P;
-    case 23:
-      return (reader.readLongOrNull(offset)) as P;
     case 24:
-      return (reader.readLong(offset)) as P;
-    case 25:
       return (reader.readDouble(offset)) as P;
+    case 25:
+      return (reader.readLongOrNull(offset)) as P;
     case 26:
       return (reader.readLong(offset)) as P;
     case 27:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 28:
-      return (reader.readLongOrNull(offset)) as P;
-    case 29:
       return (reader.readLong(offset)) as P;
+    case 29:
+      return (reader.readDateTime(offset)) as P;
     case 30:
+      return (reader.readLongOrNull(offset)) as P;
+    case 31:
+      return (reader.readLong(offset)) as P;
+    case 32:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -796,6 +815,140 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      bodyFocusNotesGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'bodyFocusNotes',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      bodyFocusNotesStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'bodyFocusNotes',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> bodyFocusNotesMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'bodyFocusNotes',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      bodyFocusNotesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'bodyFocusNotes',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      bodyFocusNotesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'bodyFocusNotes',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition>
       calorieOverrideIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1037,6 +1190,62 @@ extension ProfileQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'carbTargetG',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      cardioSessionsPerWeekEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'cardioSessionsPerWeek',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      cardioSessionsPerWeekGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'cardioSessionsPerWeek',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      cardioSessionsPerWeekLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'cardioSessionsPerWeek',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      cardioSessionsPerWeekBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'cardioSessionsPerWeek',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -2725,6 +2934,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByBodyFocusNotes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bodyFocusNotes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByBodyFocusNotesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bodyFocusNotes', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByCalorieOverride() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'calorieOverride', Sort.asc);
@@ -2770,6 +2991,19 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByCarbTargetGDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'carbTargetG', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByCardioSessionsPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cardioSessionsPerWeek', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      sortByCardioSessionsPerWeekDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cardioSessionsPerWeek', Sort.desc);
     });
   }
 
@@ -3104,6 +3338,18 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByBodyFocusNotes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bodyFocusNotes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByBodyFocusNotesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'bodyFocusNotes', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByCalorieOverride() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'calorieOverride', Sort.asc);
@@ -3149,6 +3395,19 @@ extension ProfileQuerySortThenBy
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByCarbTargetGDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'carbTargetG', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByCardioSessionsPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cardioSessionsPerWeek', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      thenByCardioSessionsPerWeekDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'cardioSessionsPerWeek', Sort.desc);
     });
   }
 
@@ -3473,6 +3732,14 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByBodyFocusNotes(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'bodyFocusNotes',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByCalorieOverride() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'calorieOverride');
@@ -3494,6 +3761,12 @@ extension ProfileQueryWhereDistinct
   QueryBuilder<Profile, Profile, QDistinct> distinctByCarbTargetG() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'carbTargetG');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByCardioSessionsPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'cardioSessionsPerWeek');
     });
   }
 
@@ -3672,6 +3945,12 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, String, QQueryOperations> bodyFocusNotesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'bodyFocusNotes');
+    });
+  }
+
   QueryBuilder<Profile, int?, QQueryOperations> calorieOverrideProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'calorieOverride');
@@ -3693,6 +3972,12 @@ extension ProfileQueryProperty
   QueryBuilder<Profile, int, QQueryOperations> carbTargetGProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'carbTargetG');
+    });
+  }
+
+  QueryBuilder<Profile, int, QQueryOperations> cardioSessionsPerWeekProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'cardioSessionsPerWeek');
     });
   }
 

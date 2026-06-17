@@ -17,6 +17,8 @@ class _Draft {
   ActivityLevel activity = ActivityLevel.moderate;
   FitnessGoal goal = FitnessGoal.generalFitness;
   int trainingDays = 3;
+  int cardioDays = 0;
+  String focusNotes = '';
 }
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -77,6 +79,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       heightCm: _draft.heightCm,
       activity: _draft.activity,
       goal: _draft.goal,
+      cardioSessionsPerWeek: _draft.cardioDays,
     );
     final p = Profile()
       ..displayName = _draft.name.trim()
@@ -87,6 +90,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..activityLevel = _draft.activity
       ..goal = _draft.goal
       ..trainingDaysPerWeek = _draft.trainingDays
+      ..cardioSessionsPerWeek = _draft.cardioDays
+      ..bodyFocusNotes = _draft.focusNotes.trim()
       ..bmr = t.bmr
       ..tdee = t.tdee
       ..calorieTarget = t.calorieTarget
@@ -415,54 +420,125 @@ class _StepGoal extends StatelessWidget {
             },
           ),
           const SizedBox(height: 28),
-          Text('TRAINING DAYS / WEEK', style: AppText.label),
-          const SizedBox(height: 12),
-          Row(
-            children: List.generate(7, (i) {
-              final n = i + 1;
-              final active = draft.trainingDays == n;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: i < 6 ? 6 : 0),
-                  child: GestureDetector(
-                    onTap: () {
-                      draft.trainingDays = n;
-                      onChanged();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AppColors.accent
-                            : AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: active
-                              ? AppColors.accent
-                              : AppColors.stroke,
-                          width: 1,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$n',
-                        style: TextStyle(
-                          color: active
-                              ? Colors.black
-                              : AppColors.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
+          Text('STRENGTH TRAINING DAYS / WEEK', style: AppText.label),
+          const SizedBox(height: 6),
+          Text('Lifting, calisthenics, gym sessions.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _DayPickerRow(
+            value: draft.trainingDays,
+            max: 7,
+            startsAt: 1,
+            onChanged: (n) {
+              draft.trainingDays = n;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
+          Text('CARDIO SESSIONS / WEEK', style: AppText.label),
+          const SizedBox(height: 6),
+          Text('Running, cycling, HIIT — adds to your calorie target.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _DayPickerRow(
+            value: draft.cardioDays,
+            max: 7,
+            startsAt: 0,
+            onChanged: (n) {
+              draft.cardioDays = n;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
+          Text('BODY FOCUS (OPTIONAL)', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'Tell the AI coach what you\'re working on — e.g. "skinny arms, belly fat, average legs". '
+              'Used to personalise suggestions.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextField(
+              minLines: 1,
+              maxLines: 3,
+              cursorColor: AppColors.accent,
+              onChanged: (v) {
+                draft.focusNotes = v;
+              },
+              style: AppText.body.copyWith(
+                  color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 14),
+                hintText: 'Skinny arms, belly fat, average legs…',
+                hintStyle: AppText.body.copyWith(
+                    color: AppColors.textTertiary, fontSize: 14),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DayPickerRow extends StatelessWidget {
+  final int value;
+  final int max;
+  final int startsAt;
+  final ValueChanged<int> onChanged;
+  const _DayPickerRow({
+    required this.value,
+    required this.max,
+    required this.startsAt,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = max - startsAt + 1;
+    return Row(
+      children: List.generate(count, (i) {
+        final n = startsAt + i;
+        final active = value == n;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i < count - 1 ? 6 : 0),
+            child: GestureDetector(
+              onTap: () => onChanged(n),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                height: 44,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.accent : AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: active ? AppColors.accent : AppColors.stroke,
+                    width: 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$n',
+                  style: TextStyle(
+                    color: active ? Colors.black : AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
     );
   }
 }
@@ -480,6 +556,7 @@ class _StepReview extends StatelessWidget {
       heightCm: draft.heightCm,
       activity: draft.activity,
       goal: draft.goal,
+      cardioSessionsPerWeek: draft.cardioDays,
     );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),

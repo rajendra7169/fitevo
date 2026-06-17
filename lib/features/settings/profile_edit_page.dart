@@ -352,28 +352,26 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                         children: [
                           Expanded(
                             child: _Field(
-                              label: 'STRENGTH DAYS / WEEK',
+                              label: 'STRENGTH / WK',
                               controller: _trainingDays,
-                              hint: '0 – 7',
+                              hint: '0–7',
                               digits: true,
-                              helper: 'Lifting / calisthenics',
                             ),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: _Field(
-                              label: 'CARDIO DAYS / WEEK',
+                              label: 'CARDIO / WK',
                               controller: _cardioDays,
-                              hint: '0 – 7',
+                              hint: '0–7',
                               digits: true,
-                              helper: 'Running, cycling, HIIT',
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Text(
-                        'Each cardio session adds ~50 kcal/day to your target.',
+                        'Strength = lifting / calisthenics. Cardio = running, cycling, HIIT — each session adds ~50 kcal/day.',
                         style: AppText.meta.copyWith(fontSize: 11),
                       ),
                     ],
@@ -399,9 +397,13 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     subtitle:
                         'Tell the AI coach what you\'re working on. Tap any tag to add it, then add your own.',
                     children: [
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 2.7,
                         children: [
                           for (final p in _focusPresets)
                             _FocusChip(
@@ -542,7 +544,6 @@ class _Field extends StatelessWidget {
   final bool digits;
   final bool decimals;
   final int maxLines;
-  final String? helper;
   const _Field({
     this.label,
     required this.controller,
@@ -550,7 +551,6 @@ class _Field extends StatelessWidget {
     this.digits = false,
     this.decimals = false,
     this.maxLines = 1,
-    this.helper,
   });
 
   @override
@@ -597,10 +597,6 @@ class _Field extends StatelessWidget {
             ),
           ),
         ),
-        if (helper != null) ...[
-          const SizedBox(height: 4),
-          Text(helper!, style: AppText.meta.copyWith(fontSize: 11)),
-        ],
       ],
     );
   }
@@ -624,13 +620,12 @@ class _FocusChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        constraints: const BoxConstraints(maxWidth: 220),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.accent.withValues(alpha: 0.18)
               : AppColors.surfaceHigh,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected ? AppColors.accent : AppColors.stroke,
             width: selected ? 1.5 : 1,
@@ -638,19 +633,26 @@ class _FocusChip extends StatelessWidget {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (selected)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(Icons.check_circle_rounded,
-                        size: 12, color: AppColors.accent),
-                  ),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.add_circle_outline_rounded,
+                  size: 12,
+                  color: selected
+                      ? AppColors.accent
+                      : AppColors.textTertiary,
+                ),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: selected
                             ? AppColors.accent
@@ -662,14 +664,20 @@ class _FocusChip extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 3),
-            Text(description,
+            const SizedBox(height: 2),
+            Expanded(
+              child: Text(
+                description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: AppText.meta.copyWith(
                   fontSize: 10,
                   color: AppColors.textTertiary,
                   fontWeight: FontWeight.w500,
                   height: 1.2,
-                )),
+                ),
+              ),
+            ),
           ],
         ),
       ),

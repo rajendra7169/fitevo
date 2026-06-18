@@ -31,13 +31,16 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: _BottomNav(
-        index: _index,
-        items: _items,
-        onTap: (i) => setState(() => _index = i),
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: IndexedStack(index: _index, children: _pages),
+        bottomNavigationBar: _BottomNav(
+          index: _index,
+          items: _items,
+          onTap: (i) => setState(() => _index = i),
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../core/health_math.dart';
 import '../data/models/food_entry.dart';
@@ -204,6 +205,9 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
   final _focus = FocusNode();
   bool _submitting = false;
 
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+
   @override
   void initState() {
     super.initState();
@@ -217,9 +221,51 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
 
   @override
   void dispose() {
+    _speech.cancel();
     _ctl.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      _speech.stop();
+      if (mounted) setState(() => _isListening = false);
+      return;
+    }
+
+    _focus.unfocus();
+
+    final available = await _speech.initialize(
+      onStatus: (status) {
+        if (status == 'notListening' || status == 'done') {
+          if (mounted && _isListening) {
+            setState(() => _isListening = false);
+          }
+        }
+      },
+      onError: (error) {
+        if (mounted) setState(() => _isListening = false);
+        _toast('Speech error: ${error.errorMsg}');
+      },
+    );
+
+    if (available) {
+      if (mounted) setState(() => _isListening = true);
+      _speech.listen(
+        onResult: (result) {
+          if (mounted) {
+            _ctl.text = result.recognizedWords;
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      _toast('Speech recognition not available or permission denied.');
+    }
   }
 
   Future<void> _submit() async {
@@ -419,10 +465,34 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                     ),
                   ),
                 )
-              else if (showSubmit)
-                _SubmitButton(enabled: hasText, onTap: _submit)
+              else if (_isListening)
+                GestureDetector(
+                  onTap: _toggleListening,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.calorieFrom.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.mic_rounded, size: 17, color: AppColors.calorieFrom),
+                  ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(end: 1.15, duration: 600.ms),
+                )
+              else if (showSubmit) ...[
+                _RoundIconButton(
+                  icon: Icons.close_rounded,
+                  onTap: () {
+                    _ctl.clear();
+                    _focus.unfocus();
+                  },
+                ),
+                const SizedBox(width: 6),
+                _SubmitButton(enabled: hasText, onTap: _submit),
+              ]
               else ...[
-                _RoundIconButton(icon: Icons.mic_rounded, onTap: () {}),
+                _RoundIconButton(icon: Icons.mic_rounded, onTap: _toggleListening),
                 const SizedBox(width: 6),
                 _RoundIconButton(
                     icon: Icons.camera_alt_rounded, onTap: _onCameraTap),

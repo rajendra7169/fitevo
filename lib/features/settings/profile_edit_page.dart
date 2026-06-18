@@ -21,6 +21,7 @@ const List<(String, String)> _focusPresets = [
   ('Upper body heavy', 'Broad shoulders, slim lower body'),
   ('Athletic', 'Already toned, want maintenance'),
   ('Overall lean', 'Want to gain muscle everywhere'),
+  ('Skinny legs', 'Thin legs, need lower-body strength'),
 ];
 
 class ProfileEditPage extends ConsumerStatefulWidget {
@@ -397,23 +398,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     subtitle:
                         'Tell the AI coach what you\'re working on. Tap any tag to add it, then add your own.',
                     children: [
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 2.7,
-                        children: [
-                          for (final p in _focusPresets)
-                            _FocusChip(
-                              label: p.$1,
-                              description: p.$2,
-                              selected:
-                                  _selectedPresets().contains(p.$1),
-                              onTap: () => _togglePreset(p.$1),
-                            ),
-                        ],
+                      RepaintBoundary(
+                        child: _FocusPresetGrid(
+                          presets: _focusPresets,
+                          selected: _selectedPresets(),
+                          onToggle: _togglePreset,
+                        ),
                       ),
                       const SizedBox(height: 14),
                       _Field(
@@ -498,27 +488,28 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.stroke),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style:
-                            AppText.sectionTitle.copyWith(fontSize: 18)),
-                    if (subtitle != null) ...[
+    return RepaintBoundary(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style:
+                              AppText.sectionTitle.copyWith(fontSize: 18)),
+                      if (subtitle != null) ...[
                       const SizedBox(height: 4),
                       Text(subtitle!,
                           style: AppText.meta.copyWith(fontSize: 12)),
@@ -529,9 +520,10 @@ class _Section extends StatelessWidget {
               if (trailing != null) trailing!,
             ],
           ),
-          const SizedBox(height: 16),
-          ...children,
-        ],
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
       ),
     );
   }
@@ -602,6 +594,57 @@ class _Field extends StatelessWidget {
   }
 }
 
+class _FocusPresetGrid extends StatelessWidget {
+  final List<(String, String)> presets;
+  final Set<String> selected;
+  final void Function(String) onToggle;
+  const _FocusPresetGrid({
+    required this.presets,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < presets.length; i += 2) {
+      final left = presets[i];
+      final right = i + 1 < presets.length ? presets[i + 1] : null;
+      rows.add(IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _FocusChip(
+                label: left.$1,
+                description: left.$2,
+                selected: selected.contains(left.$1),
+                onTap: () => onToggle(left.$1),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: right == null
+                  ? const SizedBox.shrink()
+                  : _FocusChip(
+                      label: right.$1,
+                      description: right.$2,
+                      selected: selected.contains(right.$1),
+                      onTap: () => onToggle(right.$1),
+                    ),
+            ),
+          ],
+        ),
+      ));
+      if (i + 2 < presets.length) rows.add(const SizedBox(height: 8));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: rows,
+    );
+  }
+}
+
 class _FocusChip extends StatelessWidget {
   final String label;
   final String description;
@@ -643,12 +686,12 @@ class _FocusChip extends StatelessWidget {
                   selected
                       ? Icons.check_circle_rounded
                       : Icons.add_circle_outline_rounded,
-                  size: 12,
+                  size: 13,
                   color: selected
                       ? AppColors.accent
                       : AppColors.textTertiary,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Flexible(
                   child: Text(label,
                       maxLines: 1,
@@ -658,24 +701,22 @@ class _FocusChip extends StatelessWidget {
                             ? AppColors.accent
                             : AppColors.textPrimary,
                         fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                        fontSize: 13,
                         letterSpacing: -0.1,
                       )),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
-            Expanded(
-              child: Text(
-                description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppText.meta.copyWith(
-                  fontSize: 10,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w500,
-                  height: 1.2,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.meta.copyWith(
+                fontSize: 10,
+                color: AppColors.textTertiary,
+                fontWeight: FontWeight.w500,
+                height: 1.25,
               ),
             ),
           ],

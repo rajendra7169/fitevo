@@ -12,6 +12,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../core/health_math.dart';
 import '../data/models/food_entry.dart';
 import '../data/models/profile.dart';
+import '../data/models/workout_session.dart';
 import '../data/repositories/nutrition_repo.dart';
 import '../features/account/account_page.dart';
 import '../features/food/meal_actions_sheet.dart';
@@ -21,6 +22,8 @@ import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
 import '../services/ai/ai_service.dart';
+import '../services/hero_greeting.dart';
+import '../services/progress/streak_calc.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 
@@ -59,7 +62,7 @@ class DashboardPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            section(0, _Header(profile: profile)),
+            section(0, _Header(profile: profile, totals: totals)),
             const SizedBox(height: 22),
             section(1, const _AiInputBar()),
             const SizedBox(height: 28),
@@ -86,24 +89,44 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
-String _greetingFor(DateTime t) {
-  final h = t.hour;
-  if (h < 5) return 'Hey';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   final Profile profile;
-  const _Header({required this.profile});
+  final DailyTotals totals;
+  const _Header({required this.profile, required this.totals});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
-    final greet = _greetingFor(now);
     final user = FirebaseAuth.instance.currentUser;
     final name = _resolveName(profile, user);
+
+    final foods = ref.watch(allFoodEntriesProvider).valueOrNull ?? const [];
+    final sessions =
+        ref.watch(allSessionsProvider).valueOrNull ?? const <WorkoutSession>[];
+    final streak = StreakCalc.currentStreak(
+      foodEntries: foods.whereType<FoodEntry>().toList(),
+      sessions: sessions,
+      today: now,
+    );
+    final todayKey =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final workoutDone = sessions.any(
+      (s) => s.dateKey == todayKey && s.completedAt != null,
+    );
+
+    final hero = HeroGreeting.build(
+      now: now,
+      caloriesConsumed: totals.calories,
+      calorieTarget: profile.effectiveCalorieTarget,
+      streakDays: streak,
+      workoutCompletedToday: workoutDone,
+    );
+
+    final phraseStyle = AppText.greeting.copyWith(
+      fontSize: 24,
+      letterSpacing: -0.4,
+      color: hero.emphasiseStreak ? AppColors.streak : AppColors.textPrimary,
+    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -113,13 +136,10 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                greet,
+                hero.phrase,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppText.greeting.copyWith(
-                  fontSize: 24,
-                  letterSpacing: -0.4,
-                ),
+                style: phraseStyle,
               ),
               const SizedBox(height: 4),
               Text(

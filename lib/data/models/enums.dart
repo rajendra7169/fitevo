@@ -24,6 +24,26 @@ enum MuscleGroup {
   fullBody,
 }
 
+/// Health & medical context. Some of these (pregnant, breastfeeding,
+/// eating-disorder history, T1 diabetes) trigger a "talk to a pro" card
+/// during onboarding and soften the math. Others (PCOS, hypothyroid, T2
+/// diabetes) just adjust calorie / macro defaults and feed the AI coach.
+enum HealthFlag {
+  pregnant,
+  breastfeeding,
+  eatingDisorderHistory,
+  recoveringFromInjury,
+  t1Diabetes,
+  t2Diabetes,
+  pcos,
+  hypothyroid,
+}
+
+/// How often the app should nudge the user to log weight. Stored
+/// alongside an optional preferred weekday (1 = Mon … 7 = Sun) so the
+/// reminder lands on a specific day each cycle.
+enum WeighInCadence { daily, everyOtherDay, twiceAWeek, weekly }
+
 enum Equipment {
   bodyweight,
   dumbbell,

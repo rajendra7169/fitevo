@@ -49,6 +49,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   bool _multivitamin = false;
   int _wakeMin = 420;
   int _sleepMin = 1380;
+  DateTime? _gymStartDate;
+  double? _bodyFatPct;
+  List<HealthFlag> _healthFlags = [];
+  List<int> _restDays = [];
+  WeighInCadence _cadence = WeighInCadence.weekly;
+  int? _weighInWeekday;
 
   late TextEditingController _calOverride;
   late TextEditingController _proteinOverride;
@@ -129,6 +135,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     if (_wakeMin == 0) _wakeMin = 420;
     if (_sleepMin == 0) _sleepMin = 1380;
     _focusNotes.text = p.bodyFocusNotes;
+    _gymStartDate = p.gymStartDate;
+    _bodyFatPct = p.bodyFatPct;
+    _healthFlags = List.of(p.healthFlags);
+    _restDays = List.of(p.restDays);
+    _cadence = p.weighInCadence;
+    _weighInWeekday = p.weighInWeekday;
     _gender = p.gender;
     _activity = p.activityLevel;
     _goal = p.goal;
@@ -262,6 +274,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         bodyFocusNotes: _focusNotes.text.trim(),
         creatineGramsPerDay: creatine,
         proteinScoopsPerDay: protein,
+        gymStartDate: _gymStartDate,
+        bodyFatPct: _bodyFatPct,
+        healthFlags: _healthFlags,
+        restDays: _restDays,
       );
 
       p
@@ -284,6 +300,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..multivitamin = _multivitamin
         ..otherSupplementsNote = _otherSupp.text.trim()
         ..bodyFocusNotes = _focusNotes.text.trim()
+        ..gymStartDate = _gymStartDate
+        ..bodyFatPct = _bodyFatPct
+        ..healthFlags = _healthFlags
+        ..restDays = _restDays
+        ..weighInCadence = _cadence
+        ..weighInWeekday = _weighInWeekday
         ..bmr = t.bmr
         ..tdee = t.tdee
         ..calorieTarget = t.calorieTarget
@@ -472,6 +494,13 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                         hint: 'e.g. 60',
                         digits: true,
                       ),
+                      const SizedBox(height: 14),
+                      Text('GYM EXPERIENCE', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _GymExperienceField(
+                        startDate: _gymStartDate,
+                        onChanged: (d) => setState(() => _gymStartDate = d),
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Toggle Day / Week on walking and running — whichever feels natural to you.',
@@ -507,6 +536,55 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ----------------- HEALTH & CADENCE -----------------
+                  _Section(
+                    title: 'Health & cadence',
+                    subtitle:
+                        'Body fat % unlocks Katch-McArdle. Health flags tune the math; sensitive cases trigger a "see a pro" note.',
+                    children: [
+                      Text('BODY FAT % (OPTIONAL)', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _BodyFatInline(
+                        initial: _bodyFatPct,
+                        onChanged: (v) => setState(() => _bodyFatPct = v),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('REST DAYS', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _WeekdayChipsEdit(
+                        selected: _restDays.toSet(),
+                        onChanged: (s) => setState(() {
+                          _restDays = s.toList()..sort();
+                          if (_weighInWeekday == null && s.isNotEmpty) {
+                            final f = (s.toList()..sort()).first;
+                            _weighInWeekday = f == 1 ? 7 : f - 1;
+                          }
+                        }),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('WEIGH-IN CADENCE', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _CadencePickerEdit(
+                        value: _cadence,
+                        onChanged: (c) => setState(() => _cadence = c),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('HEALTH CONTEXT', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _HealthFlagGridEdit(
+                        selected: _healthFlags.toSet(),
+                        onToggle: (f) => setState(() {
+                          if (_healthFlags.contains(f)) {
+                            _healthFlags = List.of(_healthFlags)..remove(f);
+                          } else {
+                            _healthFlags = List.of(_healthFlags)..add(f);
+                          }
+                        }),
                       ),
                     ],
                   ),
@@ -1199,6 +1277,316 @@ class _TimeField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GymExperienceField extends StatelessWidget {
+  final DateTime? startDate;
+  final ValueChanged<DateTime?> onChanged;
+  const _GymExperienceField({required this.startDate, required this.onChanged});
+
+  static const _options = <(int?, String)>[
+    (null, 'Never'),
+    (0, '< 1 mo'),
+    (3, '3–6 mo'),
+    (12, '6–24 mo'),
+    (36, '2+ yrs'),
+  ];
+
+  int? _currentBucket() {
+    if (startDate == null) return null;
+    final months = HealthMath.trainingMonths(startDate)!;
+    if (months < 1) return 0;
+    if (months < 6) return 3;
+    if (months < 24) return 12;
+    return 36;
+  }
+
+  DateTime? _bucketToDate(int? bucket) {
+    if (bucket == null) return null;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month - bucket, now.day);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = _currentBucket();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _options.map((o) {
+        final selected = o.$1 == current;
+        return GestureDetector(
+          onTap: () => onChanged(_bucketToDate(o.$1)),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? AppColors.accent : AppColors.stroke,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: selected
+                      ? AppColors.accent
+                      : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _BodyFatInline extends StatefulWidget {
+  final double? initial;
+  final ValueChanged<double?> onChanged;
+  const _BodyFatInline({required this.initial, required this.onChanged});
+
+  @override
+  State<_BodyFatInline> createState() => _BodyFatInlineState();
+}
+
+class _BodyFatInlineState extends State<_BodyFatInline> {
+  late final TextEditingController _ctl;
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(
+      text:
+          widget.initial == null ? '' : widget.initial!.toStringAsFixed(0),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              cursorColor: AppColors.accent,
+              onChanged: (v) =>
+                  widget.onChanged(double.tryParse(v.trim())),
+              style: AppText.body
+                  .copyWith(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                hintText: 'e.g. 18',
+                hintStyle: AppText.body.copyWith(
+                    color: AppColors.textTertiary, fontSize: 14),
+              ),
+            ),
+          ),
+          Text('%',
+              style: AppText.meta.copyWith(
+                  fontSize: 12, color: AppColors.textTertiary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekdayChipsEdit extends StatelessWidget {
+  final Set<int> selected;
+  final ValueChanged<Set<int>> onChanged;
+  const _WeekdayChipsEdit({required this.selected, required this.onChanged});
+
+  static const _days = <(int, String)>[
+    (1, 'Mon'),
+    (2, 'Tue'),
+    (3, 'Wed'),
+    (4, 'Thu'),
+    (5, 'Fri'),
+    (6, 'Sat'),
+    (7, 'Sun'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _days.map((d) {
+        final on = selected.contains(d.$1);
+        return GestureDetector(
+          onTap: () {
+            final next = Set<int>.of(selected);
+            if (on) {
+              next.remove(d.$1);
+            } else {
+              if (next.length >= 3) return;
+              next.add(d.$1);
+            }
+            onChanged(next);
+          },
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(d.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _CadencePickerEdit extends StatelessWidget {
+  final WeighInCadence value;
+  final ValueChanged<WeighInCadence> onChanged;
+  const _CadencePickerEdit(
+      {required this.value, required this.onChanged});
+
+  static const _options = <(WeighInCadence, String)>[
+    (WeighInCadence.daily, 'Daily'),
+    (WeighInCadence.everyOtherDay, 'Every other day'),
+    (WeighInCadence.twiceAWeek, '2× / week'),
+    (WeighInCadence.weekly, 'Weekly'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _options.map((o) {
+        final on = o.$1 == value;
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _HealthFlagGridEdit extends StatelessWidget {
+  final Set<HealthFlag> selected;
+  final ValueChanged<HealthFlag> onToggle;
+  const _HealthFlagGridEdit(
+      {required this.selected, required this.onToggle});
+
+  static const _options = <(HealthFlag, String, bool)>[
+    (HealthFlag.pregnant, 'Pregnant', true),
+    (HealthFlag.breastfeeding, 'Breastfeeding', true),
+    (HealthFlag.eatingDisorderHistory, 'Eating-disorder history', true),
+    (HealthFlag.t1Diabetes, 'Type 1 diabetes', true),
+    (HealthFlag.recoveringFromInjury, 'Recovering from injury', false),
+    (HealthFlag.t2Diabetes, 'Type 2 diabetes', false),
+    (HealthFlag.pcos, 'PCOS', false),
+    (HealthFlag.hypothyroid, 'Hypothyroid', false),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _options.map((o) {
+        final on = selected.contains(o.$1);
+        return GestureDetector(
+          onTap: () => onToggle(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (o.$3)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(Icons.warning_amber_rounded,
+                        size: 12,
+                        color: on
+                            ? AppColors.accent
+                            : AppColors.textTertiary),
+                  ),
+                Text(o.$2,
+                    style: TextStyle(
+                      color:
+                          on ? AppColors.accent : AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    )),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

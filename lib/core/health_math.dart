@@ -19,23 +19,31 @@ class ComputedTargets {
   final double bmr;
   final double tdee;
   final int calorieTarget;
+  // Rest-day target (lower because no gym/cardio burn). Equal to
+  // calorieTarget when the user has no rest days configured.
+  final int restDayCalorieTarget;
   final int proteinG;
   final int carbG;
   final int fatG;
   final int fiberG;
   final int waterMl;
   final double bmi;
+  final bool usedKatchMcArdle;
+  final bool warnConsultProfessional;
 
   const ComputedTargets({
     required this.bmr,
     required this.tdee,
     required this.calorieTarget,
+    required this.restDayCalorieTarget,
     required this.proteinG,
     required this.carbG,
     required this.fatG,
     required this.fiberG,
     required this.waterMl,
     required this.bmi,
+    required this.usedKatchMcArdle,
+    required this.warnConsultProfessional,
   });
 }
 
@@ -53,6 +61,7 @@ const double _kcalPerKmRunningPer70kg = 70;
 const double _kcalPerGymMinutePer70kg = 6.5;
 
 class HealthMath {
+  /// Mifflin-St Jeor BMR — solid default when body-fat % is unknown.
   static double bmr({
     required Gender gender,
     required int age,
@@ -68,6 +77,31 @@ class HealthMath {
       case Gender.other:
         return base - 78;
     }
+  }
+
+  /// Katch-McArdle BMR — uses lean body mass directly, so it stays
+  /// accurate for lean / very muscular users (and avoids the
+  /// Mifflin overestimate for obese users).
+  ///   BMR = 370 + 21.6 × LBM(kg);  LBM = weight × (1 - BF/100)
+  static double bmrKatchMcArdle(double weightKg, double bodyFatPct) {
+    final lbm = weightKg * (1 - bodyFatPct.clamp(0, 70) / 100.0);
+    return 370 + 21.6 * lbm;
+  }
+
+  /// Chooses Katch-McArdle when [bodyFatPct] looks reasonable (3-60%);
+  /// otherwise falls back to Mifflin.
+  static double bestBmr({
+    required Gender gender,
+    required int age,
+    required double weightKg,
+    required double heightCm,
+    double? bodyFatPct,
+  }) {
+    if (bodyFatPct != null && bodyFatPct >= 3 && bodyFatPct <= 60) {
+      return bmrKatchMcArdle(weightKg, bodyFatPct);
+    }
+    return bmr(
+        gender: gender, age: age, weightKg: weightKg, heightCm: heightCm);
   }
 
   static double activityFactor(ActivityLevel a) {
@@ -141,6 +175,91 @@ class HealthMath {
     return fromCreatine + fromProtein;
   }
 
+  /// Months of training experience based on `gymStartDate`. Returns null
+  /// when unknown. Used to detect the newbie-gains window so we don't
+  /// over-cut a beginner who still has easy muscle growth available.
+  static int? trainingMonths(DateTime? gymStartDate, {DateTime? now}) {
+    if (gymStartDate == null) return null;
+    final t = now ?? DateTime.now();
+    final months =
+        (t.year - gymStartDate.year) * 12 + (t.month - gymStartDate.month);
+    return months < 0 ? 0 : months;
+  }
+
+  /// Whether the given flag set should trigger a "see a professional"
+  /// warning card. These conditions can't safely be auto-tuned with
+  /// generic formulas — surface a banner and let the user decide.
+  static bool requiresProfessionalGuidance(List<HealthFlag> flags) {
+    return flags.contains(HealthFlag.pregnant) ||
+        flags.contains(HealthFlag.breastfeeding) ||
+        flags.contains(HealthFlag.eatingDisorderHistory) ||
+        flags.contains(HealthFlag.t1Diabetes);
+  }
+
+  /// Per-flag tuning. Returns (kcal multiplier, kcal delta, protein
+  /// delta, carb cap%) so we can stack effects without mutating the
+  /// goal-driven base. Conservative across the board.
+  static ({
+    double tdeeMultiplier,
+    int kcalDelta,
+    int proteinDeltaG,
+    double? carbsMaxFractionOfKcal,
+  }) flagAdjustments(List<HealthFlag> flags) {
+    double mul = 1.0;
+    int kcal = 0;
+    int protein = 0;
+    double? carbsMaxFraction;
+    for (final f in flags) {
+      switch (f) {
+        case HealthFlag.hypothyroid:
+          mul *= 0.93; // hormone-suppressed metabolism, ~7% lower
+        case HealthFlag.pcos:
+          mul *= 0.95; // insulin resistance often lowers maintenance
+          carbsMaxFraction = 0.40; // shift to higher protein/fat
+        case HealthFlag.t2Diabetes:
+          carbsMaxFraction = 0.35; // carb-conscious split
+          protein += 10;
+        case HealthFlag.recoveringFromInjury:
+          kcal += 100; // no cuts; modest surplus to rebuild
+          protein += 15;
+        case HealthFlag.pregnant:
+          kcal += 300; // 2nd / 3rd trimester baseline; user should
+          protein += 25; // verify with their OB-GYN
+        case HealthFlag.breastfeeding:
+          kcal += 450;
+          protein += 25;
+        case HealthFlag.eatingDisorderHistory:
+          // No automatic adjustment — surface a warning instead.
+          break;
+        case HealthFlag.t1Diabetes:
+          // Carb counting is medical; don't auto-tune. Warning instead.
+          break;
+      }
+    }
+    return (
+      tdeeMultiplier: mul,
+      kcalDelta: kcal,
+      proteinDeltaG: protein,
+      carbsMaxFractionOfKcal: carbsMaxFraction,
+    );
+  }
+
+  /// Adjustment for training experience. Newbies (< 6 months) get a
+  /// smaller deficit + small protein bonus so the muscle-building window
+  /// is preserved. Returns (kcal delta, protein delta).
+  static (int kcalDelta, int proteinDeltaG) experienceAdjustments(
+      int? trainingMonthsValue, FitnessGoal goal) {
+    if (trainingMonthsValue == null) return (0, 0);
+    // Only soften the math for goals that *cut*. Building/general should
+    // already be in a surplus or maintenance — no need to add more.
+    final cuts =
+        goal == FitnessGoal.loseFat || goal == FitnessGoal.recomp;
+    if (trainingMonthsValue < 6) {
+      return (cuts ? 100 : 0, 5);
+    }
+    return (0, 0);
+  }
+
   static ComputedTargets compute({
     required Gender gender,
     required int age,
@@ -156,9 +275,19 @@ class HealthMath {
     String bodyFocusNotes = '',
     int creatineGramsPerDay = 0,
     int proteinScoopsPerDay = 0,
+    DateTime? gymStartDate,
+    double? bodyFatPct,
+    List<HealthFlag> healthFlags = const [],
+    List<int> restDays = const [],
   }) {
-    final b = bmr(
-        gender: gender, age: age, weightKg: weightKg, heightCm: heightCm);
+    final usedKM = bodyFatPct != null && bodyFatPct >= 3 && bodyFatPct <= 60;
+    final b = bestBmr(
+      gender: gender,
+      age: age,
+      weightKg: weightKg,
+      heightCm: heightCm,
+      bodyFatPct: bodyFatPct,
+    );
 
     // If the user gave us explicit exercise volume (km or strength days),
     // the labelled activity factor already bakes that in — adding the
@@ -202,7 +331,10 @@ class HealthMath {
                 wScale) /
             7.0;
 
-    final t = baseTdee + walkingDaily + cardioDailyBump + gymDailyBump;
+    // Apply health-flag TDEE multiplier (hypothyroid / PCOS lower it).
+    final flagAdj = flagAdjustments(healthFlags);
+    final t = (baseTdee + walkingDaily + cardioDailyBump + gymDailyBump) *
+        flagAdj.tdeeMultiplier;
 
     final maxDailyDelta =
         (weightKg * HealthConstants.maxWeightChangeFraction *
@@ -234,8 +366,23 @@ class HealthMath {
         bodyFocusAdjustments(bodyFocusNotes);
     raw += focusKcalDelta;
 
+    // Newbie-gains protection: soften deficits in the first 6 months.
+    final (expKcalDelta, expProteinDelta) =
+        experienceAdjustments(trainingMonths(gymStartDate), goal);
+    raw += expKcalDelta;
+
+    // Flag-driven flat kcal delta (recovery, pregnancy, breastfeeding).
+    raw += flagAdj.kcalDelta;
+
     final floor = calorieFloor(gender);
     final calorieTarget = raw < floor ? floor : raw;
+
+    // Rest-day target: same protein/fat, but strip the day's worth of
+    // gym + cardio burn so the user can eat at maintenance on off days.
+    final restDayCardioStripped =
+        (walkingDaily * 0.5 + gymDailyBump + cardioDailyBump).round();
+    final restDayCalorieTarget =
+        (calorieTarget - restDayCardioStripped).clamp(floor, 99999);
 
     final proteinPerKg = switch (goal) {
       FitnessGoal.buildMuscle => 2.0,
@@ -243,14 +390,24 @@ class HealthMath {
       FitnessGoal.recomp => 2.0,
       FitnessGoal.generalFitness => 1.6,
     };
-    final proteinG = (proteinPerKg * weightKg).round() + focusProteinDelta;
+    final proteinG = (proteinPerKg * weightKg).round() +
+        focusProteinDelta +
+        expProteinDelta +
+        flagAdj.proteinDeltaG;
 
     final fatG = (0.9 * weightKg).round();
 
     final proteinKcal = proteinG * 4;
     final fatKcal = fatG * 9;
     final remainingKcal = calorieTarget - proteinKcal - fatKcal;
-    final carbG = (remainingKcal / 4).clamp(0, 1000).round();
+    var carbG = (remainingKcal / 4).clamp(0, 1000).round();
+    // Carb cap for PCOS / T2 diabetes: never exceed the cap fraction of
+    // total calories. Extra kcal go to fat to keep totals consistent.
+    if (flagAdj.carbsMaxFractionOfKcal != null) {
+      final maxCarbG =
+          ((calorieTarget * flagAdj.carbsMaxFractionOfKcal!) / 4).round();
+      if (carbG > maxCarbG) carbG = maxCarbG;
+    }
 
     final fiberG = (14 * (calorieTarget / 1000.0)).round();
 
@@ -265,11 +422,15 @@ class HealthMath {
       bmr: b,
       tdee: t,
       calorieTarget: calorieTarget,
+      restDayCalorieTarget:
+          restDays.isEmpty ? calorieTarget : restDayCalorieTarget,
       proteinG: proteinG,
       carbG: carbG,
       fatG: fatG,
       fiberG: fiberG,
       waterMl: waterMl,
+      usedKatchMcArdle: usedKM,
+      warnConsultProfessional: requiresProfessionalGuidance(healthFlags),
       bmi: bmi(weightKg: weightKg, heightCm: heightCm),
     );
   }

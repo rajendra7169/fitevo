@@ -79,6 +79,15 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     } else {
       await notif.cancelMealReminders();
     }
+
+    // Weigh-in cadence comes from Profile — refresh whenever the user
+    // touches anything on this page.
+    if (profile != null) {
+      await notif.scheduleWeighInReminders(
+        cadence: profile.weighInCadence,
+        preferredWeekday: profile.weighInWeekday,
+      );
+    }
   }
 
   Future<void> _pickMealTime(int index) async {

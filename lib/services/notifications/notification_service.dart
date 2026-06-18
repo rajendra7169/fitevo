@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../../data/models/enums.dart';
+
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
@@ -15,6 +17,7 @@ class NotificationService {
 
   static const _waterIdStart = 1000;
   static const _mealIdStart = 2000;
+  static const _weighInIdStart = 3000;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -147,9 +150,75 @@ class NotificationService {
   Future<void> cancelMealReminders() async {
     final pending = await _plugin.pendingNotificationRequests();
     for (final p in pending) {
-      if (p.id >= _mealIdStart) {
+      if (p.id >= _mealIdStart && p.id < _weighInIdStart) {
         await _plugin.cancel(p.id);
       }
+    }
+  }
+
+  Future<void> cancelWeighInReminders() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final p in pending) {
+      if (p.id >= _weighInIdStart) {
+        await _plugin.cancel(p.id);
+      }
+    }
+  }
+
+  /// Schedules weigh-in reminders for the next 4 weeks based on the
+  /// user's cadence + preferred weekday.
+  Future<void> scheduleWeighInReminders({
+    required WeighInCadence cadence,
+    int? preferredWeekday, // 1=Mon..7=Sun
+    int hour = 7,
+    int minute = 30,
+  }) async {
+    await init();
+    if (kIsWeb) return;
+    await cancelWeighInReminders();
+
+    int stepDays;
+    switch (cadence) {
+      case WeighInCadence.daily:
+        stepDays = 1;
+        break;
+      case WeighInCadence.everyOtherDay:
+        stepDays = 2;
+        break;
+      case WeighInCadence.twiceAWeek:
+        stepDays = 3;
+        break;
+      case WeighInCadence.weekly:
+        stepDays = 7;
+        break;
+    }
+
+    final now = tz.TZDateTime.now(tz.local);
+    // Find first fire date: if a preferred weekday is set and cadence is
+    // weekly/twice/every-other, jump to that day. Otherwise start tomorrow.
+    var start = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (start.isBefore(now)) start = start.add(const Duration(days: 1));
+    if (preferredWeekday != null && cadence == WeighInCadence.weekly) {
+      while (start.weekday != preferredWeekday) {
+        start = start.add(const Duration(days: 1));
+      }
+    }
+
+    var id = _weighInIdStart;
+    final horizonDays = 28;
+    for (var d = 0; d < horizonDays; d += stepDays) {
+      final fire = start.add(Duration(days: d));
+      await _plugin.zonedSchedule(
+        id++,
+        'Quick weigh-in',
+        'Hop on the scale — your adaptive target depends on it.',
+        fire,
+        NotificationDetails(android: _mealDetails()),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'weighin',
+      );
     }
   }
 

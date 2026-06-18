@@ -51,6 +51,34 @@ class Profile {
   // fat, average legs"). Surfaced to the AI coach for better suggestions.
   String bodyFocusNotes = '';
 
+  // When the user started training. Used to detect the "newbie gains"
+  // window (< 6 months) and soften the calorie deficit so muscle growth
+  // isn't sabotaged. Null = unknown / never trained.
+  DateTime? gymStartDate;
+
+  // Health context — high-risk flags (pregnant, breastfeeding, eating
+  // disorder, T1 diabetes) trigger a warning card and softer math;
+  // others tune defaults and feed the AI advisory.
+  @Enumerated(EnumType.name)
+  List<HealthFlag> healthFlags = [];
+
+  // Optional body-fat percentage. When set, BMR switches from
+  // Mifflin-St Jeor to Katch-McArdle which is more accurate for lean
+  // / muscular users.
+  double? bodyFatPct;
+
+  // Rest days (1=Mon..7=Sun). Used to compute a "training day vs rest
+  // day" calorie split and to anchor weigh-in reminders.
+  List<int> restDays = [];
+
+  // How often the user wants weigh-in nudges.
+  @Enumerated(EnumType.name)
+  WeighInCadence weighInCadence = WeighInCadence.weekly;
+
+  // Preferred weekday for weigh-ins (1=Mon..7=Sun). Null = derive from
+  // restDays (day before the first rest day, default Sunday).
+  int? weighInWeekday;
+
   // Derived & cached
   late double bmr;
   late double tdee;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/health_math.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/profile.dart';
+import '../../services/notifications/notification_service.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../../widgets/body_focus_grid.dart';
@@ -31,6 +32,17 @@ class _Draft {
   int proteinScoops = 0;
   bool multivitamin = false;
   String otherSupp = '';
+  // Months since gym start (0 = "just started", null = "never lifted").
+  // We store as months-ago rather than a date so the picker is friendlier;
+  // the date is reconstructed at save time.
+  int? gymMonthsAgo;
+
+  // Phase 5 additions — health context + scheduling.
+  double? bodyFatPct;
+  List<HealthFlag> healthFlags = [];
+  List<int> restDays = []; // 1=Mon..7=Sun, typically Sat in NP
+  WeighInCadence weighInCadence = WeighInCadence.weekly;
+  int? weighInWeekday;
 }
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -74,6 +86,15 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     }
   }
 
+  /// Convert "months ago" into an approximate gym-start date so the math
+  /// layer (which thinks in dates) can compute newbie status. Null when
+  /// the user said they've never lifted.
+  DateTime? _gymStartDate(int? monthsAgo) {
+    if (monthsAgo == null) return null;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month - monthsAgo, now.day);
+  }
+
   void _back() {
     if (_page == 0) return;
     _pc.previousPage(
@@ -84,6 +105,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   Future<void> _finish() async {
     setState(() => _saving = true);
+    final gymStart = _gymStartDate(_draft.gymMonthsAgo);
     final t = HealthMath.compute(
       gender: _draft.gender,
       age: _draft.age,
@@ -99,6 +121,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       bodyFocusNotes: _draft.focusNotes,
       creatineGramsPerDay: _draft.creatineG,
       proteinScoopsPerDay: _draft.proteinScoops,
+      gymStartDate: gymStart,
+      bodyFatPct: _draft.bodyFatPct,
+      healthFlags: _draft.healthFlags,
+      restDays: _draft.restDays,
     );
     final p = Profile()
       ..displayName = _draft.name.trim()
@@ -122,6 +148,12 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..otherSupplementsNote =
           _draft.takesSupplements ? _draft.otherSupp.trim() : ''
       ..bodyFocusNotes = _draft.focusNotes.trim()
+      ..gymStartDate = gymStart
+      ..bodyFatPct = _draft.bodyFatPct
+      ..healthFlags = _draft.healthFlags
+      ..restDays = _draft.restDays
+      ..weighInCadence = _draft.weighInCadence
+      ..weighInWeekday = _draft.weighInWeekday
       ..bmr = t.bmr
       ..tdee = t.tdee
       ..calorieTarget = t.calorieTarget
@@ -132,6 +164,15 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..waterTargetMl = t.waterMl
       ..bmi = t.bmi;
     await ref.read(profileRepoProvider).save(p);
+    // Kick off weigh-in reminders so the adaptive engine has data fast.
+    try {
+      await NotificationService.instance.scheduleWeighInReminders(
+        cadence: _draft.weighInCadence,
+        preferredWeekday: _draft.weighInWeekday,
+      );
+    } catch (_) {
+      // Non-critical — user can re-enable from Reminders later.
+    }
   }
 
   @override
@@ -477,6 +518,19 @@ class _StepGoal extends StatelessWidget {
             },
           ),
           const SizedBox(height: 22),
+          Text('GYM EXPERIENCE', style: AppText.label),
+          const SizedBox(height: 6),
+          Text('Affects how aggressively we tune calories.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _ExperiencePicker(
+            value: draft.gymMonthsAgo,
+            onChanged: (m) {
+              draft.gymMonthsAgo = m;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
           Text('GYM MINUTES / SESSION', style: AppText.label),
           const SizedBox(height: 6),
           Text('Time you actually train (warm-up included).',
@@ -571,6 +625,79 @@ class _StepGoal extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExperiencePicker extends StatelessWidget {
+  // null = never lifted; otherwise months-ago since starting (capped at 60+).
+  final int? value;
+  final ValueChanged<int?> onChanged;
+  const _ExperiencePicker({required this.value, required this.onChanged});
+
+  static const _options = <(int?, String, String)>[
+    (null, 'Never', 'New to lifting'),
+    (0, '< 1 mo', 'Just started'),
+    (3, '3–6 mo', 'Newbie gains'),
+    (12, '6–24 mo', 'Intermediate'),
+    (36, '2+ yrs', 'Advanced'),
+  ];
+
+  bool _matches((int?, String, String) opt) {
+    final v = value;
+    if (opt.$1 == null && v == null) return true;
+    if (opt.$1 == null || v == null) return false;
+    if (opt.$1 == 0) return v < 1;
+    if (opt.$1 == 3) return v >= 1 && v < 6;
+    if (opt.$1 == 12) return v >= 6 && v < 24;
+    if (opt.$1 == 36) return v >= 24;
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _options.map((o) {
+        final selected = _matches(o);
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? AppColors.accent : AppColors.stroke,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(o.$2,
+                    style: TextStyle(
+                      color: selected
+                          ? AppColors.accent
+                          : AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    )),
+                const SizedBox(height: 2),
+                Text(o.$3,
+                    style: AppText.meta.copyWith(
+                        fontSize: 11, color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -889,6 +1016,71 @@ class _StepLifestyle extends StatelessWidget {
                 ),
               ],
             ),
+          const SizedBox(height: 26),
+          Text('REST DAYS', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'Days you don\'t train. We\'ll show a lower calorie target for these days.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _WeekdayChips(
+            selected: draft.restDays.toSet(),
+            onChanged: (s) {
+              draft.restDays = s.toList()..sort();
+              // Default weigh-in to day before first rest day.
+              if (draft.weighInWeekday == null && s.isNotEmpty) {
+                final first = (s.toList()..sort()).first;
+                draft.weighInWeekday = first == 1 ? 7 : first - 1;
+              }
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
+          Text('WEIGH-IN CADENCE', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'After 2 weeks of weigh-ins, the adaptive coach takes over and stops being a guess.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _CadencePicker(
+            value: draft.weighInCadence,
+            onChanged: (c) {
+              draft.weighInCadence = c;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
+          Text('BODY FAT % (OPTIONAL)', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'If you know it, we use Katch-McArdle (more accurate for lean/muscular bodies).',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _BodyFatField(
+            initial: draft.bodyFatPct,
+            onChanged: (v) {
+              draft.bodyFatPct = v;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 26),
+          Text('HEALTH CONTEXT (OPTIONAL)', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'Helps tune calories. Sensitive cases will trigger a "see a pro" note.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _HealthFlagGrid(
+            selected: draft.healthFlags.toSet(),
+            onToggle: (f) {
+              if (draft.healthFlags.contains(f)) {
+                draft.healthFlags = List.of(draft.healthFlags)..remove(f);
+              } else {
+                draft.healthFlags = List.of(draft.healthFlags)..add(f);
+              }
+              onChanged();
+            },
+          ),
         ],
       ),
     );
@@ -957,6 +1149,250 @@ class _TimePickerTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WeekdayChips extends StatelessWidget {
+  final Set<int> selected;
+  final ValueChanged<Set<int>> onChanged;
+  const _WeekdayChips({required this.selected, required this.onChanged});
+
+  static const _days = <(int, String)>[
+    (1, 'Mon'),
+    (2, 'Tue'),
+    (3, 'Wed'),
+    (4, 'Thu'),
+    (5, 'Fri'),
+    (6, 'Sat'),
+    (7, 'Sun'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _days.map((d) {
+        final on = selected.contains(d.$1);
+        return GestureDetector(
+          onTap: () {
+            final next = Set<int>.of(selected);
+            if (on) {
+              next.remove(d.$1);
+            } else {
+              if (next.length >= 3) return;
+              next.add(d.$1);
+            }
+            onChanged(next);
+          },
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(d.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _CadencePicker extends StatelessWidget {
+  final WeighInCadence value;
+  final ValueChanged<WeighInCadence> onChanged;
+  const _CadencePicker({required this.value, required this.onChanged});
+
+  static const _options = <(WeighInCadence, String)>[
+    (WeighInCadence.daily, 'Daily'),
+    (WeighInCadence.everyOtherDay, 'Every other day'),
+    (WeighInCadence.twiceAWeek, '2× / week'),
+    (WeighInCadence.weekly, 'Weekly'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _options.map((o) {
+        final on = o.$1 == value;
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _BodyFatField extends StatefulWidget {
+  final double? initial;
+  final ValueChanged<double?> onChanged;
+  const _BodyFatField({required this.initial, required this.onChanged});
+
+  @override
+  State<_BodyFatField> createState() => _BodyFatFieldState();
+}
+
+class _BodyFatFieldState extends State<_BodyFatField> {
+  late final TextEditingController _ctl;
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(
+      text: widget.initial == null
+          ? ''
+          : widget.initial!.toStringAsFixed(0),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _ctl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              cursorColor: AppColors.accent,
+              onChanged: (v) {
+                final n = double.tryParse(v.trim());
+                widget.onChanged(n);
+              },
+              style: AppText.body
+                  .copyWith(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                hintText: 'e.g. 18',
+                hintStyle: AppText.body
+                    .copyWith(color: AppColors.textTertiary, fontSize: 14),
+              ),
+            ),
+          ),
+          Text('%',
+              style: AppText.meta.copyWith(
+                  fontSize: 12, color: AppColors.textTertiary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthFlagGrid extends StatelessWidget {
+  final Set<HealthFlag> selected;
+  final ValueChanged<HealthFlag> onToggle;
+  const _HealthFlagGrid({required this.selected, required this.onToggle});
+
+  static const _options = <(HealthFlag, String, bool)>[
+    (HealthFlag.pregnant, 'Pregnant', true),
+    (HealthFlag.breastfeeding, 'Breastfeeding', true),
+    (HealthFlag.eatingDisorderHistory, 'Eating-disorder history', true),
+    (HealthFlag.t1Diabetes, 'Type 1 diabetes', true),
+    (HealthFlag.recoveringFromInjury, 'Recovering from injury', false),
+    (HealthFlag.t2Diabetes, 'Type 2 diabetes', false),
+    (HealthFlag.pcos, 'PCOS', false),
+    (HealthFlag.hypothyroid, 'Hypothyroid', false),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _options.map((o) {
+        final on = selected.contains(o.$1);
+        return GestureDetector(
+          onTap: () => onToggle(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (o.$3)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(Icons.warning_amber_rounded,
+                        size: 12,
+                        color: on
+                            ? AppColors.accent
+                            : AppColors.textTertiary),
+                  ),
+                Text(o.$2,
+                    style: TextStyle(
+                      color:
+                          on ? AppColors.accent : AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    )),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -1049,6 +1485,13 @@ class _StepReview extends StatelessWidget {
       bodyFocusNotes: draft.focusNotes,
       creatineGramsPerDay: draft.creatineG,
       proteinScoopsPerDay: draft.proteinScoops,
+      gymStartDate: draft.gymMonthsAgo == null
+          ? null
+          : DateTime(DateTime.now().year,
+              DateTime.now().month - draft.gymMonthsAgo!, DateTime.now().day),
+      bodyFatPct: draft.bodyFatPct,
+      healthFlags: draft.healthFlags,
+      restDays: draft.restDays,
     );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -1060,12 +1503,25 @@ class _StepReview extends StatelessWidget {
           Text('You can edit any of these later in Settings.',
               style: AppText.body),
           const SizedBox(height: 26),
+          if (t.warnConsultProfessional) ...[
+            _ProConsultWarning(flags: draft.healthFlags),
+            const SizedBox(height: 14),
+          ],
           _ReviewBigCard(
             label: 'CALORIES',
             value: '${t.calorieTarget}',
             unit: 'kcal',
             accent: AppColors.calorieFrom,
           ),
+          if (draft.restDays.isNotEmpty &&
+              t.restDayCalorieTarget != t.calorieTarget) ...[
+            const SizedBox(height: 10),
+            _RestDayHint(
+              trainKcal: t.calorieTarget,
+              restKcal: t.restDayCalorieTarget,
+              days: draft.restDays,
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1684,6 +2140,106 @@ class _PrimaryButton extends StatelessWidget {
                   letterSpacing: -0.2,
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _ProConsultWarning extends StatelessWidget {
+  final List<HealthFlag> flags;
+  const _ProConsultWarning({required this.flags});
+
+  String _label(HealthFlag f) => switch (f) {
+        HealthFlag.pregnant => 'pregnancy',
+        HealthFlag.breastfeeding => 'breastfeeding',
+        HealthFlag.eatingDisorderHistory => 'eating-disorder history',
+        HealthFlag.t1Diabetes => 'Type 1 diabetes',
+        _ => '',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final critical = flags
+        .where((f) =>
+            f == HealthFlag.pregnant ||
+            f == HealthFlag.breastfeeding ||
+            f == HealthFlag.eatingDisorderHistory ||
+            f == HealthFlag.t1Diabetes)
+        .map(_label)
+        .where((s) => s.isNotEmpty)
+        .toList();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.55)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.medical_information_rounded,
+              size: 18, color: Colors.amber),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Talk to a professional',
+                    style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(
+                  'These numbers are generic and may not be safe for your situation (${critical.join(", ")}). Confirm calorie + macro targets with a doctor or registered dietitian before relying on them.',
+                  style:
+                      AppText.meta.copyWith(fontSize: 12, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RestDayHint extends StatelessWidget {
+  final int trainKcal;
+  final int restKcal;
+  final List<int> days;
+  const _RestDayHint({
+    required this.trainKcal,
+    required this.restKcal,
+    required this.days,
+  });
+
+  static const _names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  @override
+  Widget build(BuildContext context) {
+    final dayLabels = days.map((d) => _names[d - 1]).join(', ');
+    final delta = trainKcal - restKcal;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.bedtime_rounded,
+              size: 16, color: AppColors.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'On rest days ($dayLabels): aim for ~$restKcal kcal (−$delta vs training).',
+              style: AppText.body.copyWith(fontSize: 12.5, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }

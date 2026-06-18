@@ -23,6 +23,8 @@ import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
 import '../services/ai/ai_service.dart';
 import '../services/hero_greeting.dart';
+import 'adaptive_nudge_card.dart';
+import 'weekly_recap_card.dart';
 import '../services/progress/streak_calc.dart';
 import '../state/providers.dart';
 import '../theme.dart';
@@ -79,9 +81,13 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 22),
             section(5, _WhatsLeftStrip(profile: profile, totals: totals)),
             const SizedBox(height: 22),
-            section(6, const _WorkoutCard()),
+            section(6, const AdaptiveNudgeCard()),
             const SizedBox(height: 22),
-            section(7, _RecentMealsShelf(entries: entries)),
+            section(7, const _WorkoutCard()),
+            const SizedBox(height: 22),
+            section(8, const WeeklyRecapCard()),
+            const SizedBox(height: 22),
+            section(9, _RecentMealsShelf(entries: entries)),
           ],
         ),
       ),

@@ -40,8 +40,17 @@ class ComputedTargets {
 }
 
 /// Average calorie burn for a moderate-intensity cardio session
-/// (~45 min running / cycling). Used to bump TDEE per cardio session.
+/// (~45 min running / cycling). Used when only session count is known.
 const double _kcalPerCardioSession = 350;
+
+/// km-based burn rates. Tuned for an average 70 kg adult at moderate
+/// pace. Scales with bodyweight inside the math below.
+const double _kcalPerKmWalkingPer70kg = 50;
+const double _kcalPerKmRunningPer70kg = 70;
+
+/// Extra calorie cost per minute of heavy resistance training, beyond
+/// the baseline session burn.
+const double _kcalPerGymMinutePer70kg = 6.5;
 
 class HealthMath {
   static double bmr({
@@ -92,6 +101,46 @@ class HealthMath {
     return weightKg / (m * m);
   }
 
+  /// Per-keyword adjustments derived from the user's body-focus chips.
+  /// Adds (or subtracts) on top of the goal-based calorie target and
+  /// nudges protein. Conservative on purpose — these are gentle nudges,
+  /// not aggressive overrides.
+  static (int kcalDelta, int proteinDeltaG) bodyFocusAdjustments(
+      String notes) {
+    final lower = notes.toLowerCase();
+    var kcal = 0;
+    var protein = 0;
+    if (lower.contains('belly fat')) kcal -= 200;
+    if (lower.contains('skinny fat')) {
+      kcal -= 100;
+      protein += 10;
+    }
+    if (lower.contains('skinny arms')) protein += 10;
+    if (lower.contains('skinny legs')) protein += 5;
+    if (lower.contains('upper body heavy')) kcal -= 100;
+    if (lower.contains('lower body heavy')) kcal -= 100;
+    if (lower.contains('overall lean')) {
+      kcal += 100;
+      protein += 5;
+    }
+    // 'athletic' = no change (maintenance)
+    return (kcal, protein);
+  }
+
+  /// Extra water (ml/day) recommended for the supplements the user
+  /// reports taking. Creatine especially raises intracellular water
+  /// needs; protein helps with kidney load on high-protein diets.
+  static int supplementWaterBumpMl({
+    required int creatineGramsPerDay,
+    required int proteinScoopsPerDay,
+  }) {
+    // Roughly +100 ml per gram of creatine (capped sensibly), plus
+    // +250 ml per scoop of protein.
+    final fromCreatine = (creatineGramsPerDay.clamp(0, 20)) * 100;
+    final fromProtein = (proteinScoopsPerDay.clamp(0, 6)) * 250;
+    return fromCreatine + fromProtein;
+  }
+
   static ComputedTargets compute({
     required Gender gender,
     required int age,
@@ -100,14 +149,60 @@ class HealthMath {
     required ActivityLevel activity,
     required FitnessGoal goal,
     int cardioSessionsPerWeek = 0,
+    double walkingKmPerDay = 0,
+    double runningKmPerWeek = 0,
+    int gymMinutesPerSession = 60,
+    int strengthDaysPerWeek = 0,
+    String bodyFocusNotes = '',
+    int creatineGramsPerDay = 0,
+    int proteinScoopsPerDay = 0,
   }) {
     final b = bmr(
         gender: gender, age: age, weightKg: weightKg, heightCm: heightCm);
-    final baseTdee = b * activityFactor(activity);
-    // Spread weekly cardio burn across days for a steady TDEE bump.
-    final cardioDailyBump =
-        (cardioSessionsPerWeek.clamp(0, 14) * _kcalPerCardioSession) / 7.0;
-    final t = baseTdee + cardioDailyBump;
+
+    // If the user gave us explicit exercise volume (km or strength days),
+    // the labelled activity factor already bakes that in — adding the
+    // km/gym burns on top would double-count. Cap the baseline at "Light"
+    // (lifestyle-only NEAT) when explicit volume is present, then layer
+    // the precise burns. If they gave us nothing precise, trust the label.
+    final hasExplicitVolume = walkingKmPerDay > 0 ||
+        runningKmPerWeek > 0 ||
+        strengthDaysPerWeek > 0 ||
+        cardioSessionsPerWeek > 0;
+    final factor = hasExplicitVolume
+        ? activityFactor(activity).clamp(1.2, 1.375)
+        : activityFactor(activity);
+    final baseTdee = b * factor;
+
+    // Scale km-based burns by bodyweight so heavier users burn more.
+    final wScale = weightKg / 70.0;
+
+    final walkingDaily =
+        walkingKmPerDay.clamp(0, 30) * _kcalPerKmWalkingPer70kg * wScale;
+    final runningDaily = (runningKmPerWeek.clamp(0, 100) *
+            _kcalPerKmRunningPer70kg *
+            wScale) /
+        7.0;
+
+    // If user provided km, prefer it. Otherwise fall back to legacy
+    // session-count cardio.
+    final cardioDailyBump = (runningKmPerWeek > 0)
+        ? runningDaily
+        : (cardioSessionsPerWeek.clamp(0, 14) * _kcalPerCardioSession) / 7.0;
+
+    // Strength-training burn. When base is capped (NEAT only), count the
+    // full session length so we capture the actual lifting cost. When the
+    // labelled factor is in play, only count minutes beyond a 60-min
+    // baseline — the label already covers a "typical" session.
+    final gymMinCounted = hasExplicitVolume
+        ? gymMinutesPerSession.clamp(0, 150)
+        : (gymMinutesPerSession - 60).clamp(0, 90);
+    final gymDailyBump =
+        (strengthDaysPerWeek.clamp(0, 7) * gymMinCounted * _kcalPerGymMinutePer70kg *
+                wScale) /
+            7.0;
+
+    final t = baseTdee + walkingDaily + cardioDailyBump + gymDailyBump;
 
     final maxDailyDelta =
         (weightKg * HealthConstants.maxWeightChangeFraction *
@@ -127,12 +222,17 @@ class HealthMath {
         if (raw > maxAllowed) raw = maxAllowed;
         break;
       case FitnessGoal.recomp:
-        raw = t.round();
+        raw = (t - 150).round(); // slight deficit for body composition
         break;
       case FitnessGoal.generalFitness:
         raw = t.round();
         break;
     }
+
+    // Apply body-focus deltas on top of the goal-based number.
+    final (focusKcalDelta, focusProteinDelta) =
+        bodyFocusAdjustments(bodyFocusNotes);
+    raw += focusKcalDelta;
 
     final floor = calorieFloor(gender);
     final calorieTarget = raw < floor ? floor : raw;
@@ -140,10 +240,10 @@ class HealthMath {
     final proteinPerKg = switch (goal) {
       FitnessGoal.buildMuscle => 2.0,
       FitnessGoal.loseFat => 2.2,
-      FitnessGoal.recomp => 1.9,
+      FitnessGoal.recomp => 2.0,
       FitnessGoal.generalFitness => 1.6,
     };
-    final proteinG = (proteinPerKg * weightKg).round();
+    final proteinG = (proteinPerKg * weightKg).round() + focusProteinDelta;
 
     final fatG = (0.9 * weightKg).round();
 
@@ -154,7 +254,12 @@ class HealthMath {
 
     final fiberG = (14 * (calorieTarget / 1000.0)).round();
 
-    final waterMl = (33 * weightKg).round();
+    final baseWaterMl = (33 * weightKg).round();
+    final waterMl = baseWaterMl +
+        supplementWaterBumpMl(
+          creatineGramsPerDay: creatineGramsPerDay,
+          proteinScoopsPerDay: proteinScoopsPerDay,
+        );
 
     return ComputedTargets(
       bmr: b,

@@ -48,9 +48,29 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     await settings.setWaterIntervalHours(_waterInterval);
     await settings.setMealRemindersEnabled(_mealEnabled);
     await settings.setMealTimes(_mealTimes);
+
+    // Pull the user's wake/sleep window from Profile so water reminders
+    // only fire when they're awake. Default to 8am-9pm if unset.
+    final profile = await ref.read(profileRepoProvider).getCurrent();
+    var startHour = 8;
+    var endHour = 21;
+    if (profile != null) {
+      final wake = profile.wakeTimeMin;
+      final sleep = profile.sleepTimeMin;
+      if (wake >= 0 && wake <= 1439 && sleep >= 0 && sleep <= 1439) {
+        startHour = wake ~/ 60;
+        // End an hour before sleep so the user isn't woken to pee.
+        endHour = ((sleep ~/ 60) - 1).clamp(startHour + 1, 23);
+      }
+    }
+
     final notif = NotificationService.instance;
     if (_waterEnabled) {
-      await notif.scheduleWaterReminders(intervalHours: _waterInterval);
+      await notif.scheduleWaterReminders(
+        intervalHours: _waterInterval,
+        startHour: startHour,
+        endHour: endHour,
+      );
     } else {
       await notif.cancelWaterReminders();
     }

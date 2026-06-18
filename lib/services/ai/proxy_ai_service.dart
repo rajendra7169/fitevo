@@ -106,6 +106,14 @@ class ProxyAiService implements AiService {
   }
 
   @override
+  Future<String> targetsAdvisory({required String profileSummary}) async {
+    final json = await _postJson('/coach/targets-advisory', {
+      'profile': profileSummary,
+    });
+    return (json['text'] as String?) ?? '';
+  }
+
+  @override
   Future<List<MealSuggestion>> suggestMeals({
     required int caloriesRemaining,
     required int proteinGRemaining,

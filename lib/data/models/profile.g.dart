@@ -73,115 +73,160 @@ const ProfileSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'displayName': PropertySchema(
+    r'creatineGramsPerDay': PropertySchema(
       id: 11,
+      name: r'creatineGramsPerDay',
+      type: IsarType.long,
+    ),
+    r'displayName': PropertySchema(
+      id: 12,
       name: r'displayName',
       type: IsarType.string,
     ),
     r'effectiveCalorieTarget': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'effectiveCalorieTarget',
       type: IsarType.long,
     ),
     r'effectiveCarbTarget': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'effectiveCarbTarget',
       type: IsarType.long,
     ),
     r'effectiveFatTarget': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'effectiveFatTarget',
       type: IsarType.long,
     ),
     r'effectiveFiberTarget': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'effectiveFiberTarget',
       type: IsarType.long,
     ),
     r'effectiveProteinTarget': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'effectiveProteinTarget',
       type: IsarType.long,
     ),
     r'effectiveWaterTarget': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'effectiveWaterTarget',
       type: IsarType.long,
     ),
     r'fatOverride': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'fatOverride',
       type: IsarType.long,
     ),
     r'fatTargetG': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'fatTargetG',
       type: IsarType.long,
     ),
     r'fiberOverride': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'fiberOverride',
       type: IsarType.long,
     ),
     r'fiberTargetG': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'fiberTargetG',
       type: IsarType.long,
     ),
     r'gender': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'gender',
       type: IsarType.string,
       enumMap: _ProfilegenderEnumValueMap,
     ),
     r'goal': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'goal',
       type: IsarType.string,
       enumMap: _ProfilegoalEnumValueMap,
     ),
+    r'gymMinutesPerSession': PropertySchema(
+      id: 25,
+      name: r'gymMinutesPerSession',
+      type: IsarType.long,
+    ),
     r'heightCm': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'heightCm',
       type: IsarType.double,
     ),
+    r'multivitamin': PropertySchema(
+      id: 27,
+      name: r'multivitamin',
+      type: IsarType.bool,
+    ),
+    r'otherSupplementsNote': PropertySchema(
+      id: 28,
+      name: r'otherSupplementsNote',
+      type: IsarType.string,
+    ),
     r'proteinOverride': PropertySchema(
-      id: 25,
+      id: 29,
       name: r'proteinOverride',
       type: IsarType.long,
     ),
+    r'proteinScoopsPerDay': PropertySchema(
+      id: 30,
+      name: r'proteinScoopsPerDay',
+      type: IsarType.long,
+    ),
     r'proteinTargetG': PropertySchema(
-      id: 26,
+      id: 31,
       name: r'proteinTargetG',
       type: IsarType.long,
     ),
+    r'runningKmPerWeek': PropertySchema(
+      id: 32,
+      name: r'runningKmPerWeek',
+      type: IsarType.double,
+    ),
+    r'sleepTimeMin': PropertySchema(
+      id: 33,
+      name: r'sleepTimeMin',
+      type: IsarType.long,
+    ),
     r'tdee': PropertySchema(
-      id: 27,
+      id: 34,
       name: r'tdee',
       type: IsarType.double,
     ),
     r'trainingDaysPerWeek': PropertySchema(
-      id: 28,
+      id: 35,
       name: r'trainingDaysPerWeek',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 29,
+      id: 36,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
+    r'wakeTimeMin': PropertySchema(
+      id: 37,
+      name: r'wakeTimeMin',
+      type: IsarType.long,
+    ),
+    r'walkingKmPerDay': PropertySchema(
+      id: 38,
+      name: r'walkingKmPerDay',
+      type: IsarType.double,
+    ),
     r'waterOverride': PropertySchema(
-      id: 30,
+      id: 39,
       name: r'waterOverride',
       type: IsarType.long,
     ),
     r'waterTargetMl': PropertySchema(
-      id: 31,
+      id: 40,
       name: r'waterTargetMl',
       type: IsarType.long,
     ),
     r'weightKg': PropertySchema(
-      id: 32,
+      id: 41,
       name: r'weightKg',
       type: IsarType.double,
     )
@@ -211,6 +256,7 @@ int _profileEstimateSize(
   bytesCount += 3 + object.displayName.length * 3;
   bytesCount += 3 + object.gender.name.length * 3;
   bytesCount += 3 + object.goal.name.length * 3;
+  bytesCount += 3 + object.otherSupplementsNote.length * 3;
   return bytesCount;
 }
 
@@ -231,28 +277,37 @@ void _profileSerialize(
   writer.writeLong(offsets[8], object.carbTargetG);
   writer.writeLong(offsets[9], object.cardioSessionsPerWeek);
   writer.writeDateTime(offsets[10], object.createdAt);
-  writer.writeString(offsets[11], object.displayName);
-  writer.writeLong(offsets[12], object.effectiveCalorieTarget);
-  writer.writeLong(offsets[13], object.effectiveCarbTarget);
-  writer.writeLong(offsets[14], object.effectiveFatTarget);
-  writer.writeLong(offsets[15], object.effectiveFiberTarget);
-  writer.writeLong(offsets[16], object.effectiveProteinTarget);
-  writer.writeLong(offsets[17], object.effectiveWaterTarget);
-  writer.writeLong(offsets[18], object.fatOverride);
-  writer.writeLong(offsets[19], object.fatTargetG);
-  writer.writeLong(offsets[20], object.fiberOverride);
-  writer.writeLong(offsets[21], object.fiberTargetG);
-  writer.writeString(offsets[22], object.gender.name);
-  writer.writeString(offsets[23], object.goal.name);
-  writer.writeDouble(offsets[24], object.heightCm);
-  writer.writeLong(offsets[25], object.proteinOverride);
-  writer.writeLong(offsets[26], object.proteinTargetG);
-  writer.writeDouble(offsets[27], object.tdee);
-  writer.writeLong(offsets[28], object.trainingDaysPerWeek);
-  writer.writeDateTime(offsets[29], object.updatedAt);
-  writer.writeLong(offsets[30], object.waterOverride);
-  writer.writeLong(offsets[31], object.waterTargetMl);
-  writer.writeDouble(offsets[32], object.weightKg);
+  writer.writeLong(offsets[11], object.creatineGramsPerDay);
+  writer.writeString(offsets[12], object.displayName);
+  writer.writeLong(offsets[13], object.effectiveCalorieTarget);
+  writer.writeLong(offsets[14], object.effectiveCarbTarget);
+  writer.writeLong(offsets[15], object.effectiveFatTarget);
+  writer.writeLong(offsets[16], object.effectiveFiberTarget);
+  writer.writeLong(offsets[17], object.effectiveProteinTarget);
+  writer.writeLong(offsets[18], object.effectiveWaterTarget);
+  writer.writeLong(offsets[19], object.fatOverride);
+  writer.writeLong(offsets[20], object.fatTargetG);
+  writer.writeLong(offsets[21], object.fiberOverride);
+  writer.writeLong(offsets[22], object.fiberTargetG);
+  writer.writeString(offsets[23], object.gender.name);
+  writer.writeString(offsets[24], object.goal.name);
+  writer.writeLong(offsets[25], object.gymMinutesPerSession);
+  writer.writeDouble(offsets[26], object.heightCm);
+  writer.writeBool(offsets[27], object.multivitamin);
+  writer.writeString(offsets[28], object.otherSupplementsNote);
+  writer.writeLong(offsets[29], object.proteinOverride);
+  writer.writeLong(offsets[30], object.proteinScoopsPerDay);
+  writer.writeLong(offsets[31], object.proteinTargetG);
+  writer.writeDouble(offsets[32], object.runningKmPerWeek);
+  writer.writeLong(offsets[33], object.sleepTimeMin);
+  writer.writeDouble(offsets[34], object.tdee);
+  writer.writeLong(offsets[35], object.trainingDaysPerWeek);
+  writer.writeDateTime(offsets[36], object.updatedAt);
+  writer.writeLong(offsets[37], object.wakeTimeMin);
+  writer.writeDouble(offsets[38], object.walkingKmPerDay);
+  writer.writeLong(offsets[39], object.waterOverride);
+  writer.writeLong(offsets[40], object.waterTargetMl);
+  writer.writeDouble(offsets[41], object.weightKg);
 }
 
 Profile _profileDeserialize(
@@ -275,27 +330,36 @@ Profile _profileDeserialize(
   object.carbTargetG = reader.readLong(offsets[8]);
   object.cardioSessionsPerWeek = reader.readLong(offsets[9]);
   object.createdAt = reader.readDateTime(offsets[10]);
-  object.displayName = reader.readString(offsets[11]);
-  object.fatOverride = reader.readLongOrNull(offsets[18]);
-  object.fatTargetG = reader.readLong(offsets[19]);
-  object.fiberOverride = reader.readLongOrNull(offsets[20]);
-  object.fiberTargetG = reader.readLong(offsets[21]);
+  object.creatineGramsPerDay = reader.readLong(offsets[11]);
+  object.displayName = reader.readString(offsets[12]);
+  object.fatOverride = reader.readLongOrNull(offsets[19]);
+  object.fatTargetG = reader.readLong(offsets[20]);
+  object.fiberOverride = reader.readLongOrNull(offsets[21]);
+  object.fiberTargetG = reader.readLong(offsets[22]);
   object.gender =
-      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[22])] ??
+      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[23])] ??
           Gender.male;
   object.goal =
-      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[23])] ??
+      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[24])] ??
           FitnessGoal.buildMuscle;
-  object.heightCm = reader.readDouble(offsets[24]);
+  object.gymMinutesPerSession = reader.readLong(offsets[25]);
+  object.heightCm = reader.readDouble(offsets[26]);
   object.id = id;
-  object.proteinOverride = reader.readLongOrNull(offsets[25]);
-  object.proteinTargetG = reader.readLong(offsets[26]);
-  object.tdee = reader.readDouble(offsets[27]);
-  object.trainingDaysPerWeek = reader.readLong(offsets[28]);
-  object.updatedAt = reader.readDateTime(offsets[29]);
-  object.waterOverride = reader.readLongOrNull(offsets[30]);
-  object.waterTargetMl = reader.readLong(offsets[31]);
-  object.weightKg = reader.readDouble(offsets[32]);
+  object.multivitamin = reader.readBool(offsets[27]);
+  object.otherSupplementsNote = reader.readString(offsets[28]);
+  object.proteinOverride = reader.readLongOrNull(offsets[29]);
+  object.proteinScoopsPerDay = reader.readLong(offsets[30]);
+  object.proteinTargetG = reader.readLong(offsets[31]);
+  object.runningKmPerWeek = reader.readDouble(offsets[32]);
+  object.sleepTimeMin = reader.readLong(offsets[33]);
+  object.tdee = reader.readDouble(offsets[34]);
+  object.trainingDaysPerWeek = reader.readLong(offsets[35]);
+  object.updatedAt = reader.readDateTime(offsets[36]);
+  object.wakeTimeMin = reader.readLong(offsets[37]);
+  object.walkingKmPerDay = reader.readDouble(offsets[38]);
+  object.waterOverride = reader.readLongOrNull(offsets[39]);
+  object.waterTargetMl = reader.readLong(offsets[40]);
+  object.weightKg = reader.readDouble(offsets[41]);
   return object;
 }
 
@@ -331,9 +395,9 @@ P _profileDeserializeProp<P>(
     case 10:
       return (reader.readDateTime(offset)) as P;
     case 11:
-      return (reader.readString(offset)) as P;
-    case 12:
       return (reader.readLong(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
     case 13:
       return (reader.readLong(offset)) as P;
     case 14:
@@ -345,36 +409,54 @@ P _profileDeserializeProp<P>(
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 19:
-      return (reader.readLong(offset)) as P;
-    case 20:
       return (reader.readLongOrNull(offset)) as P;
-    case 21:
+    case 20:
       return (reader.readLong(offset)) as P;
+    case 21:
+      return (reader.readLongOrNull(offset)) as P;
     case 22:
+      return (reader.readLong(offset)) as P;
+    case 23:
       return (_ProfilegenderValueEnumMap[reader.readStringOrNull(offset)] ??
           Gender.male) as P;
-    case 23:
+    case 24:
       return (_ProfilegoalValueEnumMap[reader.readStringOrNull(offset)] ??
           FitnessGoal.buildMuscle) as P;
-    case 24:
-      return (reader.readDouble(offset)) as P;
     case 25:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 26:
-      return (reader.readLong(offset)) as P;
-    case 27:
       return (reader.readDouble(offset)) as P;
+    case 27:
+      return (reader.readBool(offset)) as P;
     case 28:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 29:
-      return (reader.readDateTime(offset)) as P;
-    case 30:
       return (reader.readLongOrNull(offset)) as P;
+    case 30:
+      return (reader.readLong(offset)) as P;
     case 31:
       return (reader.readLong(offset)) as P;
     case 32:
+      return (reader.readDouble(offset)) as P;
+    case 33:
+      return (reader.readLong(offset)) as P;
+    case 34:
+      return (reader.readDouble(offset)) as P;
+    case 35:
+      return (reader.readLong(offset)) as P;
+    case 36:
+      return (reader.readDateTime(offset)) as P;
+    case 37:
+      return (reader.readLong(offset)) as P;
+    case 38:
+      return (reader.readDouble(offset)) as P;
+    case 39:
+      return (reader.readLongOrNull(offset)) as P;
+    case 40:
+      return (reader.readLong(offset)) as P;
+    case 41:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1299,6 +1381,62 @@ extension ProfileQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      creatineGramsPerDayEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'creatineGramsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      creatineGramsPerDayGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'creatineGramsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      creatineGramsPerDayLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'creatineGramsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      creatineGramsPerDayBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'creatineGramsPerDay',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -2280,6 +2418,62 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      gymMinutesPerSessionEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'gymMinutesPerSession',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      gymMinutesPerSessionGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'gymMinutesPerSession',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      gymMinutesPerSessionLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'gymMinutesPerSession',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      gymMinutesPerSessionBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'gymMinutesPerSession',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition> heightCmEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -2394,6 +2588,152 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> multivitaminEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'multivitamin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'otherSupplementsNote',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'otherSupplementsNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'otherSupplementsNote',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'otherSupplementsNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      otherSupplementsNoteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'otherSupplementsNote',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition>
       proteinOverrideIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -2466,6 +2806,62 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      proteinScoopsPerDayEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'proteinScoopsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      proteinScoopsPerDayGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'proteinScoopsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      proteinScoopsPerDayLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'proteinScoopsPerDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      proteinScoopsPerDayBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'proteinScoopsPerDay',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition> proteinTargetGEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -2512,6 +2908,123 @@ extension ProfileQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'proteinTargetG',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> runningKmPerWeekEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'runningKmPerWeek',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      runningKmPerWeekGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'runningKmPerWeek',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      runningKmPerWeekLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'runningKmPerWeek',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> runningKmPerWeekBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'runningKmPerWeek',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepTimeMinEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sleepTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepTimeMinGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sleepTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepTimeMinLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sleepTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepTimeMinBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sleepTimeMin',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -2687,6 +3200,122 @@ extension ProfileQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> wakeTimeMinEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'wakeTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> wakeTimeMinGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'wakeTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> wakeTimeMinLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'wakeTimeMin',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> wakeTimeMinBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'wakeTimeMin',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> walkingKmPerDayEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'walkingKmPerDay',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      walkingKmPerDayGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'walkingKmPerDay',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> walkingKmPerDayLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'walkingKmPerDay',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> walkingKmPerDayBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'walkingKmPerDay',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
       ));
     });
   }
@@ -3019,6 +3648,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByCreatineGramsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'creatineGramsPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByCreatineGramsPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'creatineGramsPerDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByDisplayName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'displayName', Sort.asc);
@@ -3179,6 +3820,19 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByGymMinutesPerSession() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'gymMinutesPerSession', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      sortByGymMinutesPerSessionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'gymMinutesPerSession', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByHeightCm() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'heightCm', Sort.asc);
@@ -3188,6 +3842,31 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByHeightCmDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'heightCm', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByMultivitamin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multivitamin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByMultivitaminDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multivitamin', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByOtherSupplementsNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherSupplementsNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      sortByOtherSupplementsNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherSupplementsNote', Sort.desc);
     });
   }
 
@@ -3203,6 +3882,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByProteinScoopsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proteinScoopsPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByProteinScoopsPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proteinScoopsPerDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByProteinTargetG() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proteinTargetG', Sort.asc);
@@ -3212,6 +3903,30 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByProteinTargetGDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proteinTargetG', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByRunningKmPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmPerWeek', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByRunningKmPerWeekDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmPerWeek', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortBySleepTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sleepTimeMin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortBySleepTimeMinDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sleepTimeMin', Sort.desc);
     });
   }
 
@@ -3248,6 +3963,30 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByWakeTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'wakeTimeMin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByWakeTimeMinDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'wakeTimeMin', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByWalkingKmPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByWalkingKmPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmPerDay', Sort.desc);
     });
   }
 
@@ -3423,6 +4162,18 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByCreatineGramsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'creatineGramsPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByCreatineGramsPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'creatineGramsPerDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByDisplayName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'displayName', Sort.asc);
@@ -3583,6 +4334,19 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByGymMinutesPerSession() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'gymMinutesPerSession', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      thenByGymMinutesPerSessionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'gymMinutesPerSession', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByHeightCm() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'heightCm', Sort.asc);
@@ -3607,6 +4371,31 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByMultivitamin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multivitamin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByMultivitaminDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'multivitamin', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByOtherSupplementsNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherSupplementsNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy>
+      thenByOtherSupplementsNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherSupplementsNote', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByProteinOverride() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proteinOverride', Sort.asc);
@@ -3619,6 +4408,18 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByProteinScoopsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proteinScoopsPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByProteinScoopsPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'proteinScoopsPerDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByProteinTargetG() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proteinTargetG', Sort.asc);
@@ -3628,6 +4429,30 @@ extension ProfileQuerySortThenBy
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByProteinTargetGDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'proteinTargetG', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByRunningKmPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmPerWeek', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByRunningKmPerWeekDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmPerWeek', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenBySleepTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sleepTimeMin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenBySleepTimeMinDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sleepTimeMin', Sort.desc);
     });
   }
 
@@ -3664,6 +4489,30 @@ extension ProfileQuerySortThenBy
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByWakeTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'wakeTimeMin', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByWakeTimeMinDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'wakeTimeMin', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByWalkingKmPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmPerDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByWalkingKmPerDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmPerDay', Sort.desc);
     });
   }
 
@@ -3776,6 +4625,12 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByCreatineGramsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'creatineGramsPerDay');
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByDisplayName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3857,9 +4712,29 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByGymMinutesPerSession() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'gymMinutesPerSession');
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByHeightCm() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'heightCm');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByMultivitamin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'multivitamin');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByOtherSupplementsNote(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'otherSupplementsNote',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -3869,9 +4744,27 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByProteinScoopsPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'proteinScoopsPerDay');
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByProteinTargetG() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'proteinTargetG');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByRunningKmPerWeek() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'runningKmPerWeek');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctBySleepTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sleepTimeMin');
     });
   }
 
@@ -3890,6 +4783,18 @@ extension ProfileQueryWhereDistinct
   QueryBuilder<Profile, Profile, QDistinct> distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByWakeTimeMin() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'wakeTimeMin');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByWalkingKmPerDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'walkingKmPerDay');
     });
   }
 
@@ -3987,6 +4892,12 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, int, QQueryOperations> creatineGramsPerDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'creatineGramsPerDay');
+    });
+  }
+
   QueryBuilder<Profile, String, QQueryOperations> displayNameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'displayName');
@@ -4067,9 +4978,28 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, int, QQueryOperations> gymMinutesPerSessionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'gymMinutesPerSession');
+    });
+  }
+
   QueryBuilder<Profile, double, QQueryOperations> heightCmProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'heightCm');
+    });
+  }
+
+  QueryBuilder<Profile, bool, QQueryOperations> multivitaminProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'multivitamin');
+    });
+  }
+
+  QueryBuilder<Profile, String, QQueryOperations>
+      otherSupplementsNoteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'otherSupplementsNote');
     });
   }
 
@@ -4079,9 +5009,27 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, int, QQueryOperations> proteinScoopsPerDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'proteinScoopsPerDay');
+    });
+  }
+
   QueryBuilder<Profile, int, QQueryOperations> proteinTargetGProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'proteinTargetG');
+    });
+  }
+
+  QueryBuilder<Profile, double, QQueryOperations> runningKmPerWeekProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'runningKmPerWeek');
+    });
+  }
+
+  QueryBuilder<Profile, int, QQueryOperations> sleepTimeMinProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sleepTimeMin');
     });
   }
 
@@ -4100,6 +5048,18 @@ extension ProfileQueryProperty
   QueryBuilder<Profile, DateTime, QQueryOperations> updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<Profile, int, QQueryOperations> wakeTimeMinProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'wakeTimeMin');
+    });
+  }
+
+  QueryBuilder<Profile, double, QQueryOperations> walkingKmPerDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'walkingKmPerDay');
     });
   }
 

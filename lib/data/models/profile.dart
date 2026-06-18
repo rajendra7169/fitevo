@@ -29,6 +29,24 @@ class Profile {
   // from strength training days. Used to lift TDEE more accurately.
   int cardioSessionsPerWeek = 0;
 
+  // More precise activity inputs — used for km-based calorie math when
+  // > 0, otherwise we fall back to session counts above.
+  double walkingKmPerDay = 0;
+  double runningKmPerWeek = 0;
+  int gymMinutesPerSession = 60;
+
+  // Schedule — used both as context and to bound water reminders.
+  // Stored as minutes-of-day (0..1439). Defaults: wake 7:00, sleep 23:00.
+  int wakeTimeMin = 420;
+  int sleepTimeMin = 1380;
+
+  // Supplements — affects water target (creatine especially) and gives
+  // the coach context to make better recommendations.
+  int creatineGramsPerDay = 0;
+  int proteinScoopsPerDay = 0;
+  bool multivitamin = false;
+  String otherSupplementsNote = '';
+
   // Free-text body composition / focus areas (e.g. "skinny arms, belly
   // fat, average legs"). Surfaced to the AI coach for better suggestions.
   String bodyFocusNotes = '';

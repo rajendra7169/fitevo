@@ -9,6 +9,7 @@ import '../../data/models/enums.dart';
 import '../../data/models/profile.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../../widgets/km_input_field.dart';
 
 /// Curated body-focus presets. Each is a short tag + a one-line description
 /// that helps the user understand what it covers. Tapping a chip toggles it
@@ -38,7 +39,16 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   late TextEditingController _weightKg;
   late TextEditingController _trainingDays;
   late TextEditingController _cardioDays;
+  late TextEditingController _walkingKm;
+  late TextEditingController _runningKm;
+  late TextEditingController _gymMin;
+  late TextEditingController _creatineG;
+  late TextEditingController _proteinScoops;
+  late TextEditingController _otherSupp;
   late TextEditingController _focusNotes;
+  bool _multivitamin = false;
+  int _wakeMin = 420;
+  int _sleepMin = 1380;
 
   late TextEditingController _calOverride;
   late TextEditingController _proteinOverride;
@@ -63,6 +73,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     _weightKg = TextEditingController();
     _trainingDays = TextEditingController();
     _cardioDays = TextEditingController();
+    _walkingKm = TextEditingController();
+    _runningKm = TextEditingController();
+    _gymMin = TextEditingController();
+    _creatineG = TextEditingController();
+    _proteinScoops = TextEditingController();
+    _otherSupp = TextEditingController();
     _focusNotes = TextEditingController();
     _calOverride = TextEditingController();
     _proteinOverride = TextEditingController();
@@ -80,6 +96,11 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     return value;
   }
 
+  double _safeDouble(double value, {double min = 0, double max = 1000}) {
+    if (value.isNaN || value < min || value > max) return min;
+    return value;
+  }
+
   Future<void> _load() async {
     final p = await ref.read(profileRepoProvider).getCurrent();
     if (!mounted || p == null) return;
@@ -92,6 +113,21 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         _safeInt(p.trainingDaysPerWeek, min: 0, max: 7).toString();
     _cardioDays.text =
         _safeInt(p.cardioSessionsPerWeek, min: 0, max: 7).toString();
+    _walkingKm.text = _safeDouble(p.walkingKmPerDay, max: 30).toStringAsFixed(1);
+    _runningKm.text =
+        _safeDouble(p.runningKmPerWeek, max: 100).toStringAsFixed(0);
+    _gymMin.text =
+        _safeInt(p.gymMinutesPerSession, min: 20, max: 180).toString();
+    _creatineG.text =
+        _safeInt(p.creatineGramsPerDay, min: 0, max: 20).toString();
+    _proteinScoops.text =
+        _safeInt(p.proteinScoopsPerDay, min: 0, max: 6).toString();
+    _otherSupp.text = p.otherSupplementsNote;
+    _multivitamin = p.multivitamin;
+    _wakeMin = _safeInt(p.wakeTimeMin, min: 0, max: 1439);
+    _sleepMin = _safeInt(p.sleepTimeMin, min: 0, max: 1439);
+    if (_wakeMin == 0) _wakeMin = 420;
+    if (_sleepMin == 0) _sleepMin = 1380;
     _focusNotes.text = p.bodyFocusNotes;
     _gender = p.gender;
     _activity = p.activityLevel;
@@ -113,6 +149,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     _weightKg.dispose();
     _trainingDays.dispose();
     _cardioDays.dispose();
+    _walkingKm.dispose();
+    _runningKm.dispose();
+    _gymMin.dispose();
+    _creatineG.dispose();
+    _proteinScoops.dispose();
+    _otherSupp.dispose();
     _focusNotes.dispose();
     _calOverride.dispose();
     _proteinOverride.dispose();
@@ -188,6 +230,22 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
           int.tryParse(_cardioDays.text.trim()) ?? p.cardioSessionsPerWeek,
           min: 0,
           max: 7);
+      final walking =
+          double.tryParse(_walkingKm.text.trim()) ?? p.walkingKmPerDay;
+      final running =
+          double.tryParse(_runningKm.text.trim()) ?? p.runningKmPerWeek;
+      final gymMin = _safeInt(
+          int.tryParse(_gymMin.text.trim()) ?? p.gymMinutesPerSession,
+          min: 20,
+          max: 180);
+      final creatine = _safeInt(
+          int.tryParse(_creatineG.text.trim()) ?? p.creatineGramsPerDay,
+          min: 0,
+          max: 20);
+      final protein = _safeInt(
+          int.tryParse(_proteinScoops.text.trim()) ?? p.proteinScoopsPerDay,
+          min: 0,
+          max: 6);
 
       final t = HealthMath.compute(
         gender: _gender,
@@ -197,6 +255,13 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         activity: _activity,
         goal: _goal,
         cardioSessionsPerWeek: cardio,
+        walkingKmPerDay: walking,
+        runningKmPerWeek: running,
+        gymMinutesPerSession: gymMin,
+        strengthDaysPerWeek: days,
+        bodyFocusNotes: _focusNotes.text.trim(),
+        creatineGramsPerDay: creatine,
+        proteinScoopsPerDay: protein,
       );
 
       p
@@ -209,6 +274,15 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..goal = _goal
         ..trainingDaysPerWeek = days
         ..cardioSessionsPerWeek = cardio
+        ..walkingKmPerDay = walking
+        ..runningKmPerWeek = running
+        ..gymMinutesPerSession = gymMin
+        ..wakeTimeMin = _wakeMin
+        ..sleepTimeMin = _sleepMin
+        ..creatineGramsPerDay = creatine
+        ..proteinScoopsPerDay = protein
+        ..multivitamin = _multivitamin
+        ..otherSupplementsNote = _otherSupp.text.trim()
         ..bodyFocusNotes = _focusNotes.text.trim()
         ..bmr = t.bmr
         ..tdee = t.tdee
@@ -370,10 +444,150 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 14),
+                      KmInputField(
+                        label: 'WALKING',
+                        initialCanonicalValue:
+                            double.tryParse(_walkingKm.text) ?? 0,
+                        canonicalUnit: KmUnit.perDay,
+                        onChanged: (v) {
+                          _walkingKm.text =
+                              ((v * 2).round() / 2.0).toStringAsFixed(1);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      KmInputField(
+                        label: 'RUNNING',
+                        initialCanonicalValue:
+                            double.tryParse(_runningKm.text) ?? 0,
+                        canonicalUnit: KmUnit.perWeek,
+                        onChanged: (v) {
+                          _runningKm.text = v.roundToDouble().toStringAsFixed(0);
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      _Field(
+                        label: 'GYM MIN / SESSION',
+                        controller: _gymMin,
+                        hint: 'e.g. 60',
+                        digits: true,
+                      ),
                       const SizedBox(height: 8),
                       Text(
-                        'Strength = lifting / calisthenics. Cardio = running, cycling, HIIT — each session adds ~50 kcal/day.',
+                        'Toggle Day / Week on walking and running — whichever feels natural to you.',
                         style: AppText.meta.copyWith(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ----------------- SCHEDULE -----------------
+                  _Section(
+                    title: 'Schedule',
+                    subtitle:
+                        'Used to time water reminders during your waking hours.',
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _TimeField(
+                              label: 'WAKE',
+                              minutes: _wakeMin,
+                              onChanged: (m) =>
+                                  setState(() => _wakeMin = m),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _TimeField(
+                              label: 'SLEEP',
+                              minutes: _sleepMin,
+                              onChanged: (m) =>
+                                  setState(() => _sleepMin = m),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ----------------- SUPPLEMENTS -----------------
+                  _Section(
+                    title: 'Supplements',
+                    subtitle:
+                        'Creatine raises your water target. Protein scoops do too.',
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _Field(
+                              label: 'CREATINE (G/DAY)',
+                              controller: _creatineG,
+                              hint: 'e.g. 5',
+                              digits: true,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _Field(
+                              label: 'PROTEIN SCOOPS',
+                              controller: _proteinScoops,
+                              hint: 'per day',
+                              digits: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: () => setState(
+                            () => _multivitamin = !_multivitamin),
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding:
+                              const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          decoration: BoxDecoration(
+                            color: _multivitamin
+                                ? AppColors.accent.withValues(alpha: 0.10)
+                                : AppColors.surfaceHigh,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _multivitamin
+                                  ? AppColors.accent
+                                  : AppColors.stroke,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _multivitamin
+                                    ? Icons.check_circle_rounded
+                                    : Icons.add_circle_outline_rounded,
+                                size: 18,
+                                color: _multivitamin
+                                    ? AppColors.accent
+                                    : AppColors.textTertiary,
+                              ),
+                              const SizedBox(width: 10),
+                              Text('Multivitamin',
+                                  style: AppText.body.copyWith(
+                                    color: _multivitamin
+                                        ? AppColors.accent
+                                        : AppColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _Field(
+                        label: 'OTHER SUPPLEMENTS',
+                        controller: _otherSupp,
+                        hint: 'Pre-workout, omega-3, vitamin D…',
                       ),
                     ],
                   ),
@@ -911,6 +1125,80 @@ class _OverrideRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TimeField extends StatelessWidget {
+  final String label;
+  final int minutes;
+  final ValueChanged<int> onChanged;
+  const _TimeField({
+    required this.label,
+    required this.minutes,
+    required this.onChanged,
+  });
+
+  Future<void> _pick(BuildContext context) async {
+    final initial = TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (ctx, child) {
+        return Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                  primary: AppColors.accent,
+                  onPrimary: Colors.black,
+                  surface: AppColors.surface,
+                  onSurface: AppColors.textPrimary,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) onChanged(picked.hour * 60 + picked.minute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    final period = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    final pretty = '$h12:${m.toString().padLeft(2, '0')} $period';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppText.label.copyWith(fontSize: 10)),
+        const SizedBox(height: 6),
+        GestureDetector(
+          onTap: () => _pick(context),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.schedule_rounded,
+                    size: 16, color: AppColors.accent),
+                const SizedBox(width: 8),
+                Text(pretty,
+                    style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

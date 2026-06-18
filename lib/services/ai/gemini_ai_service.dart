@@ -231,6 +231,27 @@ class GeminiAiService implements AiService {
   }
 
   @override
+  Future<String> targetsAdvisory({required String profileSummary}) async {
+    final model = _ensureCoachModel();
+    final prompt =
+        'You are a friendly, evidence-based fitness coach. Review the user\'s '
+        'computed daily targets given their profile. Reply in 3-5 short sentences. '
+        'Call out any conflicts (e.g. build-muscle goal with belly fat = recomp is better). '
+        'Suggest concrete tweaks if needed. Never use restrictive language or shame.\n\n'
+        '$profileSummary';
+    try {
+      final res = await model.generateContent([Content.text(prompt)]);
+      final text = res.text;
+      if (text == null || text.trim().isEmpty) {
+        throw AiException('Empty advisory.');
+      }
+      return text.trim();
+    } catch (e) {
+      throw AiException('Targets advisory failed: $e');
+    }
+  }
+
+  @override
   Future<List<MealSuggestion>> suggestMeals({
     required int caloriesRemaining,
     required int proteinGRemaining,

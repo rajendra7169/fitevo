@@ -124,6 +124,9 @@ abstract class AiService {
   Future<String> weeklyReview({
     required String contextSummary,
   });
+  Future<String> targetsAdvisory({
+    required String profileSummary,
+  });
   Future<List<MealSuggestion>> suggestMeals({
     required int caloriesRemaining,
     required int proteinGRemaining,
@@ -144,5 +147,5 @@ class AiException implements Exception {
 class AiNotConfiguredException extends AiException {
   AiNotConfiguredException()
       : super(
-            'AI is not configured. Add your free Gemini API key (aistudio.google.com) to enable logging.');
+            'AI is not configured. Add your free Groq API key (console.groq.com) or Gemini key (aistudio.google.com) to enable logging.');
 }

@@ -325,6 +325,26 @@ class GroqAiService implements AiService {
   }
 
   @override
+  Future<String> targetsAdvisory({required String profileSummary}) async {
+    final response = await _chat(
+      model: _textModel,
+      temperature: 0.4,
+      messages: [
+        {
+          'role': 'system',
+          'content':
+              'You are a friendly, evidence-based fitness coach. Review the user\'s '
+                  'computed daily targets given their profile. Reply in 3-5 short sentences. '
+                  'Call out any conflicts (e.g. build-muscle goal with belly fat = recomp is better). '
+                  'Suggest concrete tweaks if needed. Never use restrictive language or shame.',
+        },
+        {'role': 'user', 'content': profileSummary},
+      ],
+    );
+    return _extract(response);
+  }
+
+  @override
   Future<List<MealSuggestion>> suggestMeals({
     required int caloriesRemaining,
     required int proteinGRemaining,

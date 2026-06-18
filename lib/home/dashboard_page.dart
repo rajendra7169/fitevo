@@ -611,7 +611,7 @@ class _ApiKeyHint extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Add your free Gemini API key to enable AI logging.',
+              'Add your free Groq (or Gemini) API key to enable AI logging.',
               style: AppText.meta.copyWith(fontSize: 12),
             ),
           ),

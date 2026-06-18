@@ -7,6 +7,8 @@ import '../../data/models/enums.dart';
 import '../../data/models/profile.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../../widgets/body_focus_grid.dart';
+import '../../widgets/km_input_field.dart';
 
 class _Draft {
   String name = '';
@@ -18,7 +20,17 @@ class _Draft {
   FitnessGoal goal = FitnessGoal.generalFitness;
   int trainingDays = 3;
   int cardioDays = 0;
+  double walkingKmPerDay = 0;
+  double runningKmPerWeek = 0;
+  int gymMinutesPerSession = 60;
   String focusNotes = '';
+  int wakeMin = 420; // 7:00 AM
+  int sleepMin = 1380; // 11:00 PM
+  bool takesSupplements = false;
+  int creatineG = 0;
+  int proteinScoops = 0;
+  bool multivitamin = false;
+  String otherSupp = '';
 }
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -33,7 +45,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final _draft = _Draft();
   int _page = 0;
   bool _saving = false;
-  static const _totalPages = 5;
+  static const _totalPages = 6;
 
   @override
   void initState() {
@@ -80,6 +92,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       activity: _draft.activity,
       goal: _draft.goal,
       cardioSessionsPerWeek: _draft.cardioDays,
+      walkingKmPerDay: _draft.walkingKmPerDay,
+      runningKmPerWeek: _draft.runningKmPerWeek,
+      gymMinutesPerSession: _draft.gymMinutesPerSession,
+      strengthDaysPerWeek: _draft.trainingDays,
+      bodyFocusNotes: _draft.focusNotes,
+      creatineGramsPerDay: _draft.creatineG,
+      proteinScoopsPerDay: _draft.proteinScoops,
     );
     final p = Profile()
       ..displayName = _draft.name.trim()
@@ -91,6 +110,17 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..goal = _draft.goal
       ..trainingDaysPerWeek = _draft.trainingDays
       ..cardioSessionsPerWeek = _draft.cardioDays
+      ..walkingKmPerDay = _draft.walkingKmPerDay
+      ..runningKmPerWeek = _draft.runningKmPerWeek
+      ..gymMinutesPerSession = _draft.gymMinutesPerSession
+      ..wakeTimeMin = _draft.wakeMin
+      ..sleepTimeMin = _draft.sleepMin
+      ..creatineGramsPerDay = _draft.takesSupplements ? _draft.creatineG : 0
+      ..proteinScoopsPerDay =
+          _draft.takesSupplements ? _draft.proteinScoops : 0
+      ..multivitamin = _draft.takesSupplements && _draft.multivitamin
+      ..otherSupplementsNote =
+          _draft.takesSupplements ? _draft.otherSupp.trim() : ''
       ..bodyFocusNotes = _draft.focusNotes.trim()
       ..bmr = t.bmr
       ..tdee = t.tdee
@@ -124,6 +154,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   _StepBody(
                       draft: _draft, onChanged: () => setState(() {})),
                   _StepGoal(
+                      draft: _draft, onChanged: () => setState(() {})),
+                  _StepLifestyle(
                       draft: _draft, onChanged: () => setState(() {})),
                   _StepReview(draft: _draft),
                 ],
@@ -419,6 +451,16 @@ class _StepGoal extends StatelessWidget {
               onChanged();
             },
           ),
+          if (draft.goal == FitnessGoal.buildMuscle &&
+              _hasFatFocus(draft.focusNotes)) ...[
+            const SizedBox(height: 12),
+            _GoalConflictHint(
+              onSwitch: () {
+                draft.goal = FitnessGoal.recomp;
+                onChanged();
+              },
+            ),
+          ],
           const SizedBox(height: 28),
           Text('STRENGTH TRAINING DAYS / WEEK', style: AppText.label),
           const SizedBox(height: 6),
@@ -435,28 +477,67 @@ class _StepGoal extends StatelessWidget {
             },
           ),
           const SizedBox(height: 22),
-          Text('CARDIO SESSIONS / WEEK', style: AppText.label),
+          Text('GYM MINUTES / SESSION', style: AppText.label),
           const SizedBox(height: 6),
-          Text('Running, cycling, HIIT — adds to your calorie target.',
+          Text('Time you actually train (warm-up included).',
               style: AppText.meta.copyWith(fontSize: 12)),
           const SizedBox(height: 10),
-          _DayPickerRow(
-            value: draft.cardioDays,
-            max: 7,
-            startsAt: 0,
-            onChanged: (n) {
-              draft.cardioDays = n;
+          _BigValue(value: '${draft.gymMinutesPerSession}', unit: 'min'),
+          _Slider(
+            value: draft.gymMinutesPerSession.toDouble(),
+            min: 20,
+            max: 150,
+            divisions: 26,
+            onChanged: (v) {
+              draft.gymMinutesPerSession = (v / 5).round() * 5;
               onChanged();
             },
           ),
           const SizedBox(height: 22),
+          KmInputField(
+            label: 'WALKING',
+            initialCanonicalValue: draft.walkingKmPerDay,
+            canonicalUnit: KmUnit.perDay,
+            onChanged: (v) {
+              draft.walkingKmPerDay = (v * 2).round() / 2.0;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 6),
+          Text('Casual walking — steps, errands, commute. Toggle Day / Week.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 22),
+          KmInputField(
+            label: 'RUNNING',
+            initialCanonicalValue: draft.runningKmPerWeek,
+            canonicalUnit: KmUnit.perWeek,
+            onChanged: (v) {
+              draft.runningKmPerWeek = v.roundToDouble();
+              draft.cardioDays =
+                  (v / 5).round().clamp(0, 7);
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(
+              'Running, jogging, cycling — totalled however you like. Toggle Day / Week.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 22),
           Text('BODY FOCUS (OPTIONAL)', style: AppText.label),
           const SizedBox(height: 6),
           Text(
-              'Tell the AI coach what you\'re working on — e.g. "skinny arms, belly fat, average legs". '
-              'Used to personalise suggestions.',
+              'Tap any that apply. We use this to fine-tune calories + protein, and the AI coach will personalise suggestions.',
               style: AppText.meta.copyWith(fontSize: 12)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          BodyFocusGrid(
+            selected: FocusNotesUtil.selectedPresets(draft.focusNotes),
+            onToggle: (label) {
+              draft.focusNotes =
+                  FocusNotesUtil.togglePreset(draft.focusNotes, label);
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: AppColors.surface,
@@ -466,8 +547,12 @@ class _StepGoal extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14),
             child: TextField(
               minLines: 1,
-              maxLines: 3,
+              maxLines: 2,
               cursorColor: AppColors.accent,
+              controller:
+                  TextEditingController(text: draft.focusNotes)
+                    ..selection = TextSelection.collapsed(
+                        offset: draft.focusNotes.length),
               onChanged: (v) {
                 draft.focusNotes = v;
               },
@@ -478,10 +563,69 @@ class _StepGoal extends StatelessWidget {
                 isCollapsed: true,
                 contentPadding:
                     const EdgeInsets.symmetric(vertical: 14),
-                hintText: 'Skinny arms, belly fat, average legs…',
+                hintText: 'Add anything else (optional)…',
                 hintStyle: AppText.body.copyWith(
                     color: AppColors.textTertiary, fontSize: 14),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _hasFatFocus(String notes) {
+  final lower = notes.toLowerCase();
+  return lower.contains('belly fat') || lower.contains('skinny fat');
+}
+
+class _GoalConflictHint extends StatelessWidget {
+  final VoidCallback onSwitch;
+  const _GoalConflictHint({required this.onSwitch});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lightbulb_rounded,
+              size: 18, color: AppColors.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Recomp may suit you better.',
+                  style: AppText.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'You picked Build muscle but flagged belly fat. A slight deficit + high protein lets you build muscle while losing fat.',
+                  style: AppText.meta.copyWith(fontSize: 12, height: 1.35),
+                ),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: onSwitch,
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(
+                    'Switch to Recomp →',
+                    style: AppText.label.copyWith(
+                        color: AppColors.accent, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -543,6 +687,347 @@ class _DayPickerRow extends StatelessWidget {
   }
 }
 
+class _StepLifestyle extends StatelessWidget {
+  final _Draft draft;
+  final VoidCallback onChanged;
+  const _StepLifestyle({required this.draft, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Daily rhythm', style: _StepStyles.title),
+          const SizedBox(height: 8),
+          Text(
+              'Used to time water reminders and adjust your hydration target.',
+              style: AppText.body),
+          const SizedBox(height: 24),
+          Text('WAKE & SLEEP', style: AppText.label),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _TimePickerTile(
+                  label: 'Wake',
+                  minutes: draft.wakeMin,
+                  onChanged: (m) {
+                    draft.wakeMin = m;
+                    onChanged();
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _TimePickerTile(
+                  label: 'Sleep',
+                  minutes: draft.sleepMin,
+                  onChanged: (m) {
+                    draft.sleepMin = m;
+                    onChanged();
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          Row(
+            children: [
+              Expanded(child: Text('SUPPLEMENTS', style: AppText.label)),
+              GestureDetector(
+                onTap: () {
+                  draft.takesSupplements = !draft.takesSupplements;
+                  onChanged();
+                },
+                child: Text(
+                  draft.takesSupplements ? 'I don\'t' : 'Skip — I don\'t',
+                  style: AppText.label.copyWith(
+                      color: AppColors.accent, letterSpacing: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+              'Creatine especially needs more water. Skip if you don\'t take anything.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 12),
+          if (!draft.takesSupplements)
+            GestureDetector(
+              onTap: () {
+                draft.takesSupplements = true;
+                onChanged();
+              },
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.stroke),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded,
+                        size: 18, color: AppColors.accent),
+                    const SizedBox(width: 10),
+                    Text('I take some — add details',
+                        style: AppText.body.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14)),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _LabeledNumField(
+                        label: 'CREATINE (G/DAY)',
+                        hint: 'e.g. 5',
+                        initial: draft.creatineG,
+                        onChanged: (n) {
+                          draft.creatineG = n;
+                          onChanged();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _LabeledNumField(
+                        label: 'PROTEIN SCOOPS',
+                        hint: 'per day',
+                        initial: draft.proteinScoops,
+                        onChanged: (n) {
+                          draft.proteinScoops = n;
+                          onChanged();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () {
+                    draft.multivitamin = !draft.multivitamin;
+                    onChanged();
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      color: draft.multivitamin
+                          ? AppColors.accent.withValues(alpha: 0.10)
+                          : AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: draft.multivitamin
+                            ? AppColors.accent
+                            : AppColors.stroke,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          draft.multivitamin
+                              ? Icons.check_circle_rounded
+                              : Icons.add_circle_outline_rounded,
+                          size: 18,
+                          color: draft.multivitamin
+                              ? AppColors.accent
+                              : AppColors.textTertiary,
+                        ),
+                        const SizedBox(width: 10),
+                        Text('Multivitamin',
+                            style: AppText.body.copyWith(
+                              color: draft.multivitamin
+                                  ? AppColors.accent
+                                  : AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            )),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('OTHER (OPTIONAL)', style: AppText.label),
+                const SizedBox(height: 6),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.stroke),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: TextField(
+                    cursorColor: AppColors.accent,
+                    controller: TextEditingController(text: draft.otherSupp)
+                      ..selection = TextSelection.collapsed(
+                          offset: draft.otherSupp.length),
+                    onChanged: (v) {
+                      draft.otherSupp = v;
+                    },
+                    style: AppText.body.copyWith(
+                        color: AppColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 14),
+                      hintText: 'Pre-workout, omega-3, vitamin D…',
+                      hintStyle: AppText.body.copyWith(
+                          color: AppColors.textTertiary, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimePickerTile extends StatelessWidget {
+  final String label;
+  final int minutes;
+  final ValueChanged<int> onChanged;
+  const _TimePickerTile({
+    required this.label,
+    required this.minutes,
+    required this.onChanged,
+  });
+
+  String get _formatted {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    final period = h >= 12 ? 'PM' : 'AM';
+    final h12 = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '$h12:${m.toString().padLeft(2, '0')} $period';
+  }
+
+  Future<void> _pick(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60),
+      builder: (ctx, child) {
+        return Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                  primary: AppColors.accent,
+                  onPrimary: Colors.black,
+                  surface: AppColors.surface,
+                  onSurface: AppColors.textPrimary,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) onChanged(picked.hour * 60 + picked.minute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _pick(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label.toUpperCase(),
+                style: AppText.label.copyWith(fontSize: 10)),
+            const SizedBox(height: 6),
+            Text(_formatted,
+                style: AppText.bigNumber.copyWith(fontSize: 20)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LabeledNumField extends StatefulWidget {
+  final String label;
+  final String hint;
+  final int initial;
+  final ValueChanged<int> onChanged;
+  const _LabeledNumField({
+    required this.label,
+    required this.hint,
+    required this.initial,
+    required this.onChanged,
+  });
+
+  @override
+  State<_LabeledNumField> createState() => _LabeledNumFieldState();
+}
+
+class _LabeledNumFieldState extends State<_LabeledNumField> {
+  late final TextEditingController _ctl;
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(
+        text: widget.initial > 0 ? widget.initial.toString() : '');
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label, style: AppText.label.copyWith(fontSize: 10)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.stroke),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: TextField(
+            controller: _ctl,
+            keyboardType: TextInputType.number,
+            cursorColor: AppColors.accent,
+            onChanged: (v) => widget.onChanged(int.tryParse(v.trim()) ?? 0),
+            style: AppText.body.copyWith(
+                color: AppColors.textPrimary, fontSize: 14),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              isCollapsed: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              hintText: widget.hint,
+              hintStyle: AppText.body
+                  .copyWith(color: AppColors.textTertiary, fontSize: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _StepReview extends StatelessWidget {
   final _Draft draft;
   const _StepReview({required this.draft});
@@ -557,6 +1042,13 @@ class _StepReview extends StatelessWidget {
       activity: draft.activity,
       goal: draft.goal,
       cardioSessionsPerWeek: draft.cardioDays,
+      walkingKmPerDay: draft.walkingKmPerDay,
+      runningKmPerWeek: draft.runningKmPerWeek,
+      gymMinutesPerSession: draft.gymMinutesPerSession,
+      strengthDaysPerWeek: draft.trainingDays,
+      bodyFocusNotes: draft.focusNotes,
+      creatineGramsPerDay: draft.creatineG,
+      proteinScoopsPerDay: draft.proteinScoops,
     );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -631,7 +1123,9 @@ class _StepReview extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+          _AdvisoryCard(draft: draft, targets: t),
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -654,6 +1148,164 @@ class _StepReview extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AdvisoryCard extends ConsumerStatefulWidget {
+  final _Draft draft;
+  final ComputedTargets targets;
+  const _AdvisoryCard({required this.draft, required this.targets});
+
+  @override
+  ConsumerState<_AdvisoryCard> createState() => _AdvisoryCardState();
+}
+
+class _AdvisoryCardState extends ConsumerState<_AdvisoryCard> {
+  bool _loading = false;
+  String? _text;
+  String? _error;
+
+  String _summary() {
+    final d = widget.draft;
+    final t = widget.targets;
+    final wakeH = d.wakeMin ~/ 60;
+    final wakeM = (d.wakeMin % 60).toString().padLeft(2, '0');
+    final sleepH = d.sleepMin ~/ 60;
+    final sleepM = (d.sleepMin % 60).toString().padLeft(2, '0');
+    final supp = d.takesSupplements
+        ? [
+            if (d.creatineG > 0) '${d.creatineG}g creatine',
+            if (d.proteinScoops > 0) '${d.proteinScoops} protein scoop(s)',
+            if (d.multivitamin) 'multivitamin',
+            if (d.otherSupp.trim().isNotEmpty) d.otherSupp.trim(),
+          ].join(', ')
+        : 'none';
+    return [
+      'Age: ${d.age}, ${d.gender.name}, ${d.heightCm.round()}cm, ${d.weightKg.toStringAsFixed(1)}kg (BMI ${t.bmi.toStringAsFixed(1)})',
+      'Activity label: ${d.activity.name}',
+      'Strength: ${d.trainingDays}d/wk x ${d.gymMinutesPerSession}min',
+      'Walking: ${d.walkingKmPerDay.toStringAsFixed(1)} km/day',
+      'Running: ${d.runningKmPerWeek.toStringAsFixed(0)} km/week',
+      'Goal: ${d.goal.name}',
+      'Body focus: ${d.focusNotes.isEmpty ? "none" : d.focusNotes}',
+      'Sleep window: $wakeH:$wakeM to $sleepH:$sleepM',
+      'Supplements: $supp',
+      '',
+      'Computed targets:',
+      'Calories ${t.calorieTarget} kcal, Protein ${t.proteinG}g, Carbs ${t.carbG}g, Fat ${t.fatG}g, Fiber ${t.fiberG}g, Water ${(t.waterMl / 1000).toStringAsFixed(1)}L',
+      'BMR ${t.bmr.round()}, TDEE ${t.tdee.round()}',
+    ].join('\n');
+  }
+
+  Future<void> _fetch() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final ai = ref.read(aiServiceProvider);
+      final text = await ai.targetsAdvisory(profileSummary: _summary());
+      if (!mounted) return;
+      setState(() {
+        _text = text;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_text != null) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded,
+                    size: 16, color: AppColors.accent),
+                const SizedBox(width: 8),
+                Text('COACH SAYS',
+                    style: AppText.label.copyWith(
+                        color: AppColors.accent, letterSpacing: 1.2)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(_text!,
+                style: AppText.body
+                    .copyWith(fontSize: 13.5, height: 1.45)),
+          ],
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: _loading ? null : _fetch,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.stroke),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded,
+                color: AppColors.accent, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _loading
+                        ? 'Asking the coach…'
+                        : (_error != null
+                            ? 'Couldn\'t reach the coach. Tap to retry.'
+                            : 'Get a coach\'s take on these numbers'),
+                    style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _error ??
+                        'A short, personalized second opinion based on your inputs.',
+                    style: AppText.meta.copyWith(fontSize: 11.5),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (_loading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child:
+                    CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(Icons.arrow_forward_rounded,
+                  color: AppColors.accent, size: 18),
+          ],
+        ),
       ),
     );
   }

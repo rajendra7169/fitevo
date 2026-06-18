@@ -48,6 +48,7 @@ class FitevoApp extends ConsumerWidget {
     final palette = mode == ThemeMode.light ? lightPalette : darkPalette;
     AppColors.palette = palette;
 
+
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: palette.brightness == Brightness.dark

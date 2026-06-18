@@ -15,6 +15,7 @@ import '../data/repositories/nutrition_repo.dart';
 import '../features/account/account_page.dart';
 import '../features/food/meal_actions_sheet.dart';
 import '../features/food/meal_suggestions_sheet.dart';
+import '../features/food/nutrient_detail_page.dart';
 import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
@@ -692,6 +693,12 @@ class _MacrosRow extends StatelessWidget {
   final DailyTotals totals;
   const _MacrosRow({required this.profile, required this.totals});
 
+  void _openDetail(BuildContext context, NutrientType type) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => NutrientDetailPage(nutrient: type)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -702,6 +709,7 @@ class _MacrosRow extends StatelessWidget {
             consumed: totals.proteinG,
             target: profile.effectiveProteinTarget,
             color: AppColors.protein,
+            onTap: () => _openDetail(context, NutrientType.protein),
           ),
         ),
         const SizedBox(width: 10),
@@ -711,6 +719,7 @@ class _MacrosRow extends StatelessWidget {
             consumed: totals.carbsG,
             target: profile.effectiveCarbTarget,
             color: AppColors.carbs,
+            onTap: () => _openDetail(context, NutrientType.carbs),
           ),
         ),
         const SizedBox(width: 10),
@@ -720,6 +729,7 @@ class _MacrosRow extends StatelessWidget {
             consumed: totals.fatG,
             target: profile.effectiveFatTarget,
             color: AppColors.fat,
+            onTap: () => _openDetail(context, NutrientType.fat),
           ),
         ),
       ],
@@ -732,12 +742,14 @@ class _MacroBar extends StatelessWidget {
   final int consumed;
   final int target;
   final Color color;
+  final VoidCallback? onTap;
 
   const _MacroBar({
     required this.label,
     required this.consumed,
     required this.target,
     required this.color,
+    this.onTap,
   });
 
   @override
@@ -747,8 +759,11 @@ class _MacroBar extends StatelessWidget {
         target == 0 ? 0.0 : (consumed / target).clamp(0.0, 1.0);
     final done = left == 0 && target > 0;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
@@ -774,26 +789,30 @@ class _MacroBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('$left',
-                  style: AppText.bigNumber.copyWith(
-                    fontSize: 22,
-                    color: done
-                        ? AppColors.textTertiary
-                        : AppColors.textPrimary,
-                  )),
-              const SizedBox(width: 2),
-              Text('g',
-                  style: AppText.meta.copyWith(
-                      fontSize: 12, color: AppColors.textTertiary)),
-              const SizedBox(width: 4),
-              Text(done ? 'done' : 'left',
-                  style: AppText.meta.copyWith(
-                      fontSize: 11, color: AppColors.textTertiary)),
-            ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('$left',
+                    style: AppText.bigNumber.copyWith(
+                      fontSize: 22,
+                      color: done
+                          ? AppColors.textTertiary
+                          : AppColors.textPrimary,
+                    )),
+                const SizedBox(width: 2),
+                Text('g',
+                    style: AppText.meta.copyWith(
+                        fontSize: 12, color: AppColors.textTertiary)),
+                const SizedBox(width: 4),
+                Text(done ? 'done' : 'left',
+                    style: AppText.meta.copyWith(
+                        fontSize: 11, color: AppColors.textTertiary)),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           ClipRRect(
@@ -820,6 +839,7 @@ class _MacroBar extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -851,6 +871,7 @@ class _WaterFiberChips extends ConsumerWidget {
             of: '${(waterTargetMl / 1000).toStringAsFixed(1)}L',
             progress: waterProgress.clamp(0.0, 1.0),
             color: AppColors.water,
+            isAddAction: true,
             onTap: () async {
               final today = ref.read(todayProvider);
               await ref.read(nutritionRepoProvider).addWater(today, 250);
@@ -866,6 +887,12 @@ class _WaterFiberChips extends ConsumerWidget {
             of: '${fiberTarget}g',
             progress: fiberProgress.clamp(0.0, 1.0),
             color: AppColors.fiber,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    const NutrientDetailPage(nutrient: NutrientType.fiber),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -877,6 +904,12 @@ class _WaterFiberChips extends ConsumerWidget {
             of: '${(sodiumLimit / 1000).toStringAsFixed(1)}g',
             progress: sodiumProgress.clamp(0.0, 1.0),
             color: AppColors.calorieFrom,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    const NutrientDetailPage(nutrient: NutrientType.sodium),
+              ),
+            ),
           ),
         ),
       ],
@@ -892,6 +925,7 @@ class _StatChip extends StatelessWidget {
   final double progress;
   final Color color;
   final VoidCallback? onTap;
+  final bool isAddAction;
 
   const _StatChip({
     required this.icon,
@@ -901,6 +935,7 @@ class _StatChip extends StatelessWidget {
     required this.progress,
     required this.color,
     this.onTap,
+    this.isAddAction = false,
   });
 
   @override
@@ -941,7 +976,13 @@ class _StatChip extends StatelessWidget {
                   ),
                 ),
                 if (onTap != null)
-                  Icon(Icons.add_rounded, size: 14, color: color),
+                  Icon(
+                    isAddAction
+                        ? Icons.add_rounded
+                        : Icons.chevron_right_rounded,
+                    size: 14,
+                    color: color,
+                  ),
               ],
             ),
             const SizedBox(height: 8),

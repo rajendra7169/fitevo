@@ -9,7 +9,6 @@ import '../../services/notifications/notification_service.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../../widgets/body_focus_grid.dart';
-import '../../widgets/km_input_field.dart';
 
 class _Draft {
   String name = '';
@@ -43,6 +42,14 @@ class _Draft {
   List<int> restDays = []; // 1=Mon..7=Sun, typically Sat in NP
   WeighInCadence weighInCadence = WeighInCadence.weekly;
   int? weighInWeekday;
+
+  // Phase 6 — non-gym branch. When false, onboarding hides gym fields
+  // and the math zeroes out strength contributions.
+  bool goesGym = true;
+
+  // Daily running km — the user enters a typical per-day value; the
+  // home page lets them log actual km on the day they run.
+  double runningKmPerDay = 0;
 }
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -105,7 +112,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   Future<void> _finish() async {
     setState(() => _saving = true);
-    final gymStart = _gymStartDate(_draft.gymMonthsAgo);
+    final gymStart = _draft.goesGym ? _gymStartDate(_draft.gymMonthsAgo) : null;
+    final runningKmPerWeek = (_draft.runningKmPerDay * 7).roundToDouble();
     final t = HealthMath.compute(
       gender: _draft.gender,
       age: _draft.age,
@@ -115,12 +123,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       goal: _draft.goal,
       cardioSessionsPerWeek: _draft.cardioDays,
       walkingKmPerDay: _draft.walkingKmPerDay,
-      runningKmPerWeek: _draft.runningKmPerWeek,
-      gymMinutesPerSession: _draft.gymMinutesPerSession,
-      strengthDaysPerWeek: _draft.trainingDays,
+      runningKmPerWeek: runningKmPerWeek,
+      gymMinutesPerSession:
+          _draft.goesGym ? _draft.gymMinutesPerSession : 0,
+      strengthDaysPerWeek: _draft.goesGym ? _draft.trainingDays : 0,
       bodyFocusNotes: _draft.focusNotes,
-      creatineGramsPerDay: _draft.creatineG,
-      proteinScoopsPerDay: _draft.proteinScoops,
+      creatineGramsPerDay: _draft.goesGym ? _draft.creatineG : 0,
+      proteinScoopsPerDay: _draft.goesGym ? _draft.proteinScoops : 0,
       gymStartDate: gymStart,
       bodyFatPct: _draft.bodyFatPct,
       healthFlags: _draft.healthFlags,
@@ -134,11 +143,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..weightKg = _draft.weightKg
       ..activityLevel = _draft.activity
       ..goal = _draft.goal
-      ..trainingDaysPerWeek = _draft.trainingDays
+      ..trainingDaysPerWeek = _draft.goesGym ? _draft.trainingDays : 0
       ..cardioSessionsPerWeek = _draft.cardioDays
       ..walkingKmPerDay = _draft.walkingKmPerDay
-      ..runningKmPerWeek = _draft.runningKmPerWeek
-      ..gymMinutesPerSession = _draft.gymMinutesPerSession
+      ..runningKmPerWeek = runningKmPerWeek
+      ..gymMinutesPerSession =
+          _draft.goesGym ? _draft.gymMinutesPerSession : 0
+      ..goesGym = _draft.goesGym
       ..wakeTimeMin = _draft.wakeMin
       ..sleepTimeMin = _draft.sleepMin
       ..creatineGramsPerDay = _draft.takesSupplements ? _draft.creatineG : 0
@@ -474,7 +485,21 @@ class _StepGoal extends StatelessWidget {
           const SizedBox(height: 8),
           Text('We\'ll tune calories and protein for it.',
               style: AppText.body),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          Text('DO YOU TRAIN AT A GYM?', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'Off if you only walk / run. We\'ll skip strength + supplement questions.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _YesNoToggle(
+            value: draft.goesGym,
+            onChanged: (v) {
+              draft.goesGym = v;
+              onChanged();
+            },
+          ),
+          const SizedBox(height: 22),
           _SegmentedColumn<FitnessGoal>(
             value: draft.goal,
             options: const [
@@ -502,79 +527,77 @@ class _StepGoal extends StatelessWidget {
               },
             ),
           ],
-          const SizedBox(height: 28),
-          Text('STRENGTH TRAINING DAYS / WEEK', style: AppText.label),
-          const SizedBox(height: 6),
-          Text('Lifting, calisthenics, gym sessions.',
-              style: AppText.meta.copyWith(fontSize: 12)),
-          const SizedBox(height: 10),
-          _DayPickerRow(
-            value: draft.trainingDays,
-            max: 7,
-            startsAt: 1,
-            onChanged: (n) {
-              draft.trainingDays = n;
-              onChanged();
-            },
-          ),
+          if (draft.goesGym) ...[
+            const SizedBox(height: 28),
+            Text('STRENGTH TRAINING DAYS / WEEK', style: AppText.label),
+            const SizedBox(height: 6),
+            Text('Lifting, calisthenics, gym sessions.',
+                style: AppText.meta.copyWith(fontSize: 12)),
+            const SizedBox(height: 10),
+            _DayPickerRow(
+              value: draft.trainingDays,
+              max: 7,
+              startsAt: 1,
+              onChanged: (n) {
+                draft.trainingDays = n;
+                onChanged();
+              },
+            ),
+            const SizedBox(height: 22),
+            Text('GYM EXPERIENCE', style: AppText.label),
+            const SizedBox(height: 6),
+            Text('Affects how aggressively we tune calories.',
+                style: AppText.meta.copyWith(fontSize: 12)),
+            const SizedBox(height: 10),
+            _ExperiencePicker(
+              value: draft.gymMonthsAgo,
+              onChanged: (m) {
+                draft.gymMonthsAgo = m;
+                onChanged();
+              },
+            ),
+            const SizedBox(height: 22),
+            Text('GYM MINUTES / SESSION', style: AppText.label),
+            const SizedBox(height: 6),
+            Text('Time you actually train (warm-up included).',
+                style: AppText.meta.copyWith(fontSize: 12)),
+            const SizedBox(height: 10),
+            _BigValue(value: '${draft.gymMinutesPerSession}', unit: 'min'),
+            _Slider(
+              value: draft.gymMinutesPerSession.toDouble(),
+              min: 20,
+              max: 150,
+              divisions: 26,
+              onChanged: (v) {
+                draft.gymMinutesPerSession = (v / 5).round() * 5;
+                onChanged();
+              },
+            ),
+          ],
           const SizedBox(height: 22),
-          Text('GYM EXPERIENCE', style: AppText.label),
-          const SizedBox(height: 6),
-          Text('Affects how aggressively we tune calories.',
-              style: AppText.meta.copyWith(fontSize: 12)),
-          const SizedBox(height: 10),
-          _ExperiencePicker(
-            value: draft.gymMonthsAgo,
-            onChanged: (m) {
-              draft.gymMonthsAgo = m;
-              onChanged();
-            },
-          ),
-          const SizedBox(height: 22),
-          Text('GYM MINUTES / SESSION', style: AppText.label),
-          const SizedBox(height: 6),
-          Text('Time you actually train (warm-up included).',
-              style: AppText.meta.copyWith(fontSize: 12)),
-          const SizedBox(height: 10),
-          _BigValue(value: '${draft.gymMinutesPerSession}', unit: 'min'),
-          _Slider(
-            value: draft.gymMinutesPerSession.toDouble(),
-            min: 20,
-            max: 150,
-            divisions: 26,
-            onChanged: (v) {
-              draft.gymMinutesPerSession = (v / 5).round() * 5;
-              onChanged();
-            },
-          ),
-          const SizedBox(height: 22),
-          KmInputField(
-            label: 'WALKING',
-            initialCanonicalValue: draft.walkingKmPerDay,
-            canonicalUnit: KmUnit.perDay,
+          _DailyKmField(
+            label: 'WALKING KM / DAY',
+            initial: draft.walkingKmPerDay,
             onChanged: (v) {
               draft.walkingKmPerDay = (v * 2).round() / 2.0;
               onChanged();
             },
           ),
           const SizedBox(height: 6),
-          Text('Casual walking — steps, errands, commute. Toggle Day / Week.',
+          Text('Average walking on a typical day — steps, errands, commute.',
               style: AppText.meta.copyWith(fontSize: 12)),
           const SizedBox(height: 22),
-          KmInputField(
-            label: 'RUNNING',
-            initialCanonicalValue: draft.runningKmPerWeek,
-            canonicalUnit: KmUnit.perWeek,
+          _DailyKmField(
+            label: 'RUNNING KM / DAY',
+            initial: draft.runningKmPerDay,
             onChanged: (v) {
-              draft.runningKmPerWeek = v.roundToDouble();
-              draft.cardioDays =
-                  (v / 5).round().clamp(0, 7);
+              draft.runningKmPerDay = (v * 2).round() / 2.0;
               onChanged();
             },
           ),
           const SizedBox(height: 6),
           Text(
-              'Running, jogging, cycling — totalled however you like. Toggle Day / Week.',
+              'Average per day. Not sure which days you run? Leave 0 and log it from the home page on the days you actually run — you\'ll earn extra calories that day.',
               style: AppText.meta.copyWith(fontSize: 12)),
           const SizedBox(height: 22),
           Text('BODY FOCUS (OPTIONAL)', style: AppText.label),
@@ -625,6 +648,138 @@ class _StepGoal extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _YesNoToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _YesNoToggle({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget pill(String label, bool selected, VoidCallback onTap) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(label,
+                style: TextStyle(
+                  color: selected ? Colors.black : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                )),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          pill('Yes, I lift', value, () => onChanged(true)),
+          pill('No', !value, () => onChanged(false)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyKmField extends StatefulWidget {
+  final String label;
+  final double initial;
+  final ValueChanged<double> onChanged;
+  const _DailyKmField({
+    required this.label,
+    required this.initial,
+    required this.onChanged,
+  });
+
+  @override
+  State<_DailyKmField> createState() => _DailyKmFieldState();
+}
+
+class _DailyKmFieldState extends State<_DailyKmField> {
+  late final TextEditingController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(
+      text: widget.initial <= 0
+          ? ''
+          : (widget.initial == widget.initial.roundToDouble()
+              ? widget.initial.toInt().toString()
+              : widget.initial.toStringAsFixed(1)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.label, style: AppText.label.copyWith(fontSize: 11)),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.stroke),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _ctl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  cursorColor: AppColors.accent,
+                  onChanged: (v) {
+                    widget.onChanged(double.tryParse(v.trim()) ?? 0);
+                  },
+                  style: AppText.body
+                      .copyWith(color: AppColors.textPrimary, fontSize: 15),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 14),
+                    hintText: '0',
+                    hintStyle: AppText.body.copyWith(
+                        color: AppColors.textTertiary, fontSize: 15),
+                  ),
+                ),
+              ),
+              Text('km / day',
+                  style: AppText.meta.copyWith(
+                      fontSize: 12, color: AppColors.textTertiary)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -859,6 +1014,7 @@ class _StepLifestyle extends StatelessWidget {
               ),
             ],
           ),
+          if (draft.goesGym) ...[
           const SizedBox(height: 26),
           Row(
             children: [
@@ -1016,6 +1172,7 @@ class _StepLifestyle extends StatelessWidget {
                 ),
               ],
             ),
+          ],
           const SizedBox(height: 26),
           Text('REST DAYS', style: AppText.label),
           const SizedBox(height: 6),
@@ -1479,13 +1636,14 @@ class _StepReview extends StatelessWidget {
       goal: draft.goal,
       cardioSessionsPerWeek: draft.cardioDays,
       walkingKmPerDay: draft.walkingKmPerDay,
-      runningKmPerWeek: draft.runningKmPerWeek,
-      gymMinutesPerSession: draft.gymMinutesPerSession,
-      strengthDaysPerWeek: draft.trainingDays,
+      runningKmPerWeek: (draft.runningKmPerDay * 7).roundToDouble(),
+      gymMinutesPerSession:
+          draft.goesGym ? draft.gymMinutesPerSession : 0,
+      strengthDaysPerWeek: draft.goesGym ? draft.trainingDays : 0,
       bodyFocusNotes: draft.focusNotes,
-      creatineGramsPerDay: draft.creatineG,
-      proteinScoopsPerDay: draft.proteinScoops,
-      gymStartDate: draft.gymMonthsAgo == null
+      creatineGramsPerDay: draft.goesGym ? draft.creatineG : 0,
+      proteinScoopsPerDay: draft.goesGym ? draft.proteinScoops : 0,
+      gymStartDate: draft.gymMonthsAgo == null || !draft.goesGym
           ? null
           : DateTime(DateTime.now().year,
               DateTime.now().month - draft.gymMonthsAgo!, DateTime.now().day),

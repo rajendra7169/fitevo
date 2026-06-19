@@ -55,6 +55,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   List<int> _restDays = [];
   WeighInCadence _cadence = WeighInCadence.weekly;
   int? _weighInWeekday;
+  bool _goesGym = true;
 
   late TextEditingController _calOverride;
   late TextEditingController _proteinOverride;
@@ -136,6 +137,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     if (_sleepMin == 0) _sleepMin = 1380;
     _focusNotes.text = p.bodyFocusNotes;
     _gymStartDate = p.gymStartDate;
+    _goesGym = p.goesGym;
     _bodyFatPct = p.bodyFatPct;
     _healthFlags = List.of(p.healthFlags);
     _restDays = List.of(p.restDays);
@@ -269,8 +271,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         cardioSessionsPerWeek: cardio,
         walkingKmPerDay: walking,
         runningKmPerWeek: running,
-        gymMinutesPerSession: gymMin,
-        strengthDaysPerWeek: days,
+        gymMinutesPerSession: _goesGym ? gymMin : 0,
+        strengthDaysPerWeek: _goesGym ? days : 0,
         bodyFocusNotes: _focusNotes.text.trim(),
         creatineGramsPerDay: creatine,
         proteinScoopsPerDay: protein,
@@ -306,6 +308,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..restDays = _restDays
         ..weighInCadence = _cadence
         ..weighInWeekday = _weighInWeekday
+        ..goesGym = _goesGym
         ..bmr = t.bmr
         ..tdee = t.tdee
         ..calorieTarget = t.calorieTarget
@@ -437,35 +440,45 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     subtitle:
                         'How active you are day-to-day, plus structured training.',
                     children: [
+                      Text('DO YOU TRAIN AT A GYM?',
+                          style: AppText.label),
+                      const SizedBox(height: 8),
+                      _GoesGymToggle(
+                        value: _goesGym,
+                        onChanged: (v) => setState(() => _goesGym = v),
+                      ),
+                      const SizedBox(height: 16),
                       Text('ACTIVITY LEVEL', style: AppText.label),
                       const SizedBox(height: 8),
                       _ActivitySegment(
                         value: _activity,
                         onChanged: (a) => setState(() => _activity = a),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _Field(
-                              label: 'STRENGTH / WK',
-                              controller: _trainingDays,
-                              hint: '0–7',
-                              digits: true,
+                      if (_goesGym) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _Field(
+                                label: 'STRENGTH / WK',
+                                controller: _trainingDays,
+                                hint: '0–7',
+                                digits: true,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _Field(
-                              label: 'CARDIO / WK',
-                              controller: _cardioDays,
-                              hint: '0–7',
-                              digits: true,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _Field(
+                                label: 'CARDIO / WK',
+                                controller: _cardioDays,
+                                hint: '0–7',
+                                digits: true,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       KmInputField(
                         label: 'WALKING',
@@ -487,23 +500,27 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                           _runningKm.text = v.roundToDouble().toStringAsFixed(0);
                         },
                       ),
-                      const SizedBox(height: 14),
-                      _Field(
-                        label: 'GYM MIN / SESSION',
-                        controller: _gymMin,
-                        hint: 'e.g. 60',
-                        digits: true,
-                      ),
-                      const SizedBox(height: 14),
-                      Text('GYM EXPERIENCE', style: AppText.label),
-                      const SizedBox(height: 8),
-                      _GymExperienceField(
-                        startDate: _gymStartDate,
-                        onChanged: (d) => setState(() => _gymStartDate = d),
-                      ),
+                      if (_goesGym) ...[
+                        const SizedBox(height: 14),
+                        _Field(
+                          label: 'GYM MIN / SESSION',
+                          controller: _gymMin,
+                          hint: 'e.g. 60',
+                          digits: true,
+                        ),
+                        const SizedBox(height: 14),
+                        Text('GYM EXPERIENCE', style: AppText.label),
+                        const SizedBox(height: 8),
+                        _GymExperienceField(
+                          startDate: _gymStartDate,
+                          onChanged: (d) => setState(() => _gymStartDate = d),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       Text(
-                        'Toggle Day / Week on walking and running — whichever feels natural to you.',
+                        _goesGym
+                            ? 'Toggle Day / Week on walking and running — whichever feels natural to you.'
+                            : 'Log specific running days from the home page — you\'ll get extra calories that day only.',
                         style: AppText.meta.copyWith(fontSize: 11),
                       ),
                     ],
@@ -591,6 +608,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                   const SizedBox(height: 20),
 
                   // ----------------- SUPPLEMENTS -----------------
+                  if (_goesGym)
                   _Section(
                     title: 'Supplements',
                     subtitle:
@@ -1344,6 +1362,54 @@ class _GymExperienceField extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _GoesGymToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  const _GoesGymToggle({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget pill(String label, bool selected, VoidCallback onTap) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(label,
+                style: TextStyle(
+                  color: selected ? Colors.black : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                )),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          pill('Yes, I lift', value, () => onChanged(true)),
+          pill('No', !value, () => onChanged(false)),
+        ],
+      ),
     );
   }
 }

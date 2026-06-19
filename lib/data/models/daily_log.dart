@@ -14,6 +14,15 @@ class DailyLog {
   int? heartRateAvg;
   int? sleepMinutes;
 
+  // Actual activity logged today — overrides the Profile's weekly
+  // average for today's calorie target so users who skip running on a
+  // rest day don't get phantom burn credit, and users who run extra
+  // get the extra calories on the day they earned them.
+  double walkingKmToday = 0;
+  double runningKmToday = 0;
+  int otherCardioMinutes = 0;
+  String? activityNote;
+
   DateTime createdAt = DateTime.now();
   DateTime updatedAt = DateTime.now();
 

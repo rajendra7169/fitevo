@@ -17,38 +17,58 @@ const DailyLogSchema = CollectionSchema(
   name: r'DailyLog',
   id: -3995615497450705259,
   properties: {
-    r'createdAt': PropertySchema(
+    r'activityNote': PropertySchema(
       id: 0,
+      name: r'activityNote',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 1,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'dateKey': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'dateKey',
       type: IsarType.string,
     ),
     r'heartRateAvg': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'heartRateAvg',
       type: IsarType.long,
     ),
+    r'otherCardioMinutes': PropertySchema(
+      id: 4,
+      name: r'otherCardioMinutes',
+      type: IsarType.long,
+    ),
+    r'runningKmToday': PropertySchema(
+      id: 5,
+      name: r'runningKmToday',
+      type: IsarType.double,
+    ),
     r'sleepMinutes': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'sleepMinutes',
       type: IsarType.long,
     ),
     r'steps': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'steps',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
+    r'walkingKmToday': PropertySchema(
+      id: 9,
+      name: r'walkingKmToday',
+      type: IsarType.double,
+    ),
     r'waterMl': PropertySchema(
-      id: 6,
+      id: 10,
       name: r'waterMl',
       type: IsarType.long,
     )
@@ -87,6 +107,12 @@ int _dailyLogEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.activityNote;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.dateKey.length * 3;
   return bytesCount;
 }
@@ -97,13 +123,17 @@ void _dailyLogSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeString(offsets[1], object.dateKey);
-  writer.writeLong(offsets[2], object.heartRateAvg);
-  writer.writeLong(offsets[3], object.sleepMinutes);
-  writer.writeLong(offsets[4], object.steps);
-  writer.writeDateTime(offsets[5], object.updatedAt);
-  writer.writeLong(offsets[6], object.waterMl);
+  writer.writeString(offsets[0], object.activityNote);
+  writer.writeDateTime(offsets[1], object.createdAt);
+  writer.writeString(offsets[2], object.dateKey);
+  writer.writeLong(offsets[3], object.heartRateAvg);
+  writer.writeLong(offsets[4], object.otherCardioMinutes);
+  writer.writeDouble(offsets[5], object.runningKmToday);
+  writer.writeLong(offsets[6], object.sleepMinutes);
+  writer.writeLong(offsets[7], object.steps);
+  writer.writeDateTime(offsets[8], object.updatedAt);
+  writer.writeDouble(offsets[9], object.walkingKmToday);
+  writer.writeLong(offsets[10], object.waterMl);
 }
 
 DailyLog _dailyLogDeserialize(
@@ -113,14 +143,18 @@ DailyLog _dailyLogDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = DailyLog();
-  object.createdAt = reader.readDateTime(offsets[0]);
-  object.dateKey = reader.readString(offsets[1]);
-  object.heartRateAvg = reader.readLongOrNull(offsets[2]);
+  object.activityNote = reader.readStringOrNull(offsets[0]);
+  object.createdAt = reader.readDateTime(offsets[1]);
+  object.dateKey = reader.readString(offsets[2]);
+  object.heartRateAvg = reader.readLongOrNull(offsets[3]);
   object.id = id;
-  object.sleepMinutes = reader.readLongOrNull(offsets[3]);
-  object.steps = reader.readLongOrNull(offsets[4]);
-  object.updatedAt = reader.readDateTime(offsets[5]);
-  object.waterMl = reader.readLong(offsets[6]);
+  object.otherCardioMinutes = reader.readLong(offsets[4]);
+  object.runningKmToday = reader.readDouble(offsets[5]);
+  object.sleepMinutes = reader.readLongOrNull(offsets[6]);
+  object.steps = reader.readLongOrNull(offsets[7]);
+  object.updatedAt = reader.readDateTime(offsets[8]);
+  object.walkingKmToday = reader.readDouble(offsets[9]);
+  object.waterMl = reader.readLong(offsets[10]);
   return object;
 }
 
@@ -132,18 +166,26 @@ P _dailyLogDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 2:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 3:
       return (reader.readLongOrNull(offset)) as P;
     case 4:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 5:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 6:
+      return (reader.readLongOrNull(offset)) as P;
+    case 7:
+      return (reader.readLongOrNull(offset)) as P;
+    case 8:
+      return (reader.readDateTime(offset)) as P;
+    case 9:
+      return (reader.readDouble(offset)) as P;
+    case 10:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -339,6 +381,157 @@ extension DailyLogQueryWhere on QueryBuilder<DailyLog, DailyLog, QWhereClause> {
 
 extension DailyLogQueryFilter
     on QueryBuilder<DailyLog, DailyLog, QFilterCondition> {
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'activityNote',
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      activityNoteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'activityNote',
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      activityNoteGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'activityNote',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      activityNoteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'activityNote',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> activityNoteMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'activityNote',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      activityNoteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityNote',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      activityNoteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'activityNote',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> createdAtEqualTo(
       DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -645,6 +838,126 @@ extension DailyLogQueryFilter
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      otherCardioMinutesEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'otherCardioMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      otherCardioMinutesGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'otherCardioMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      otherCardioMinutesLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'otherCardioMinutes',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      otherCardioMinutesBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'otherCardioMinutes',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> runningKmTodayEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'runningKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      runningKmTodayGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'runningKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      runningKmTodayLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'runningKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> runningKmTodayBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'runningKmToday',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> sleepMinutesIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -838,6 +1151,70 @@ extension DailyLogQueryFilter
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> walkingKmTodayEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'walkingKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      walkingKmTodayGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'walkingKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      walkingKmTodayLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'walkingKmToday',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> walkingKmTodayBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'walkingKmToday',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> waterMlEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -899,6 +1276,18 @@ extension DailyLogQueryLinks
     on QueryBuilder<DailyLog, DailyLog, QFilterCondition> {}
 
 extension DailyLogQuerySortBy on QueryBuilder<DailyLog, DailyLog, QSortBy> {
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByActivityNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByActivityNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityNote', Sort.desc);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -932,6 +1321,31 @@ extension DailyLogQuerySortBy on QueryBuilder<DailyLog, DailyLog, QSortBy> {
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByHeartRateAvgDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'heartRateAvg', Sort.desc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByOtherCardioMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherCardioMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy>
+      sortByOtherCardioMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherCardioMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByRunningKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmToday', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByRunningKmTodayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmToday', Sort.desc);
     });
   }
 
@@ -971,6 +1385,18 @@ extension DailyLogQuerySortBy on QueryBuilder<DailyLog, DailyLog, QSortBy> {
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByWalkingKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmToday', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByWalkingKmTodayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmToday', Sort.desc);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> sortByWaterMl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'waterMl', Sort.asc);
@@ -986,6 +1412,18 @@ extension DailyLogQuerySortBy on QueryBuilder<DailyLog, DailyLog, QSortBy> {
 
 extension DailyLogQuerySortThenBy
     on QueryBuilder<DailyLog, DailyLog, QSortThenBy> {
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByActivityNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityNote', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByActivityNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityNote', Sort.desc);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1034,6 +1472,31 @@ extension DailyLogQuerySortThenBy
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByOtherCardioMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherCardioMinutes', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy>
+      thenByOtherCardioMinutesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'otherCardioMinutes', Sort.desc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByRunningKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmToday', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByRunningKmTodayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'runningKmToday', Sort.desc);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenBySleepMinutes() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sleepMinutes', Sort.asc);
@@ -1070,6 +1533,18 @@ extension DailyLogQuerySortThenBy
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByWalkingKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmToday', Sort.asc);
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByWalkingKmTodayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'walkingKmToday', Sort.desc);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterSortBy> thenByWaterMl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'waterMl', Sort.asc);
@@ -1085,6 +1560,13 @@ extension DailyLogQuerySortThenBy
 
 extension DailyLogQueryWhereDistinct
     on QueryBuilder<DailyLog, DailyLog, QDistinct> {
+  QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByActivityNote(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'activityNote', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -1101,6 +1583,18 @@ extension DailyLogQueryWhereDistinct
   QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByHeartRateAvg() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'heartRateAvg');
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByOtherCardioMinutes() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'otherCardioMinutes');
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByRunningKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'runningKmToday');
     });
   }
 
@@ -1122,6 +1616,12 @@ extension DailyLogQueryWhereDistinct
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByWalkingKmToday() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'walkingKmToday');
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QDistinct> distinctByWaterMl() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'waterMl');
@@ -1134,6 +1634,12 @@ extension DailyLogQueryProperty
   QueryBuilder<DailyLog, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<DailyLog, String?, QQueryOperations> activityNoteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityNote');
     });
   }
 
@@ -1155,6 +1661,18 @@ extension DailyLogQueryProperty
     });
   }
 
+  QueryBuilder<DailyLog, int, QQueryOperations> otherCardioMinutesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'otherCardioMinutes');
+    });
+  }
+
+  QueryBuilder<DailyLog, double, QQueryOperations> runningKmTodayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'runningKmToday');
+    });
+  }
+
   QueryBuilder<DailyLog, int?, QQueryOperations> sleepMinutesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sleepMinutes');
@@ -1170,6 +1688,12 @@ extension DailyLogQueryProperty
   QueryBuilder<DailyLog, DateTime, QQueryOperations> updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<DailyLog, double, QQueryOperations> walkingKmTodayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'walkingKmToday');
     });
   }
 

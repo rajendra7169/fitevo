@@ -79,6 +79,11 @@ class Profile {
   // restDays (day before the first rest day, default Sunday).
   int? weighInWeekday;
 
+  // False when the user doesn't train at a gym (just walks / runs).
+  // Hides gym fields in onboarding & profile edit and zeros out
+  // strength-day / gym-minute math.
+  bool goesGym = true;
+
   // Derived & cached
   late double bmr;
   late double tdee;

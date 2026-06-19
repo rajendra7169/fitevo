@@ -16,7 +16,6 @@ import '../data/models/workout_session.dart';
 import '../data/repositories/nutrition_repo.dart';
 import '../features/account/account_page.dart';
 import '../features/food/meal_actions_sheet.dart';
-import '../features/food/meal_suggestions_sheet.dart';
 import '../features/food/nutrient_detail_page.dart';
 import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
@@ -24,6 +23,7 @@ import '../features/workout/workout_page.dart';
 import '../services/ai/ai_service.dart';
 import '../services/hero_greeting.dart';
 import 'adaptive_nudge_card.dart';
+import 'todays_activity_card.dart';
 import 'weekly_recap_card.dart';
 import '../services/progress/streak_calc.dart';
 import '../state/providers.dart';
@@ -37,6 +37,7 @@ class DashboardPage extends ConsumerWidget {
     final profile = ref.watch(profileStreamProvider).valueOrNull;
     final totals = ref.watch(todayTotalsProvider);
     final entries = ref.watch(todayEntriesProvider).valueOrNull ?? const [];
+    final todayLog = ref.watch(todayLogProvider).valueOrNull;
 
     if (profile == null) {
       return Center(
@@ -72,14 +73,17 @@ class DashboardPage extends ConsumerWidget {
                 2,
                 _CalorieRing(
                   consumed: totals.calories,
-                  target: profile.effectiveCalorieTarget,
+                  target: TodaysActivityMath.effectiveTodayCalorieTarget(
+                    profile: profile,
+                    log: todayLog,
+                  ),
                 )),
             const SizedBox(height: 28),
             section(3, _MacrosRow(profile: profile, totals: totals)),
             const SizedBox(height: 16),
             section(4, _WaterFiberChips(profile: profile, totals: totals)),
             const SizedBox(height: 22),
-            section(5, _WhatsLeftStrip(profile: profile, totals: totals)),
+            section(5, TodaysActivityCard(profile: profile)),
             const SizedBox(height: 22),
             section(6, const AdaptiveNudgeCard()),
             const SizedBox(height: 22),
@@ -1103,141 +1107,6 @@ class _StatChip extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _WhatsLeftStrip extends ConsumerWidget {
-  final Profile profile;
-  final DailyTotals totals;
-  const _WhatsLeftStrip({required this.profile, required this.totals});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final calLeft =
-        math.max(0, profile.effectiveCalorieTarget - totals.calories);
-    final pLeft =
-        math.max(0, profile.effectiveProteinTarget - totals.proteinG);
-    final wLeftMl =
-        math.max(0, profile.effectiveWaterTarget - totals.waterMl);
-    final fLeft = math.max(0, profile.effectiveFiberTarget - totals.fiberG);
-
-    final parts = <(String, Color)>[];
-    if (pLeft > 0) parts.add(('${pLeft}g protein', AppColors.protein));
-    if (wLeftMl > 0) {
-      parts.add((
-        '${(wLeftMl / 1000).toStringAsFixed(1)}L water',
-        AppColors.water,
-      ));
-    }
-    if (fLeft > 0) parts.add(('${fLeft}g fiber', AppColors.fiber));
-
-    Widget strip;
-    if (parts.isEmpty) {
-      strip = Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: AppColors.accent.withValues(alpha: 0.18), width: 1),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.check_circle_rounded,
-                color: AppColors.accent, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text('All daily targets met. Nicely done.',
-                  style: AppText.body.copyWith(color: AppColors.textPrimary)),
-            ),
-          ],
-        ),
-      );
-    } else {
-      final spans = <InlineSpan>[const TextSpan(text: 'You still need ')];
-      for (var i = 0; i < parts.length; i++) {
-        spans.add(TextSpan(
-          text: parts[i].$1,
-          style: AppText.body.copyWith(
-            color: parts[i].$2,
-            fontWeight: FontWeight.w700,
-          ),
-        ));
-        if (i < parts.length - 2) {
-          spans.add(const TextSpan(text: ', '));
-        } else if (i == parts.length - 2) {
-          spans.add(const TextSpan(text: ' and '));
-        }
-      }
-      spans.add(const TextSpan(text: '.'));
-
-      strip = Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: AppColors.accent.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: AppColors.accent.withValues(alpha: 0.18), width: 1),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.flag_rounded, color: AppColors.accent, size: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: AppText.body.copyWith(color: AppColors.textPrimary),
-                  children: spans,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        strip,
-        if (calLeft > 0) ...[
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () => MealSuggestionsSheet.show(
-              context,
-              profile: profile,
-              totals: totals,
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.stroke),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome_rounded,
-                      size: 14, color: AppColors.accent),
-                  const SizedBox(width: 8),
-                  Text('What should I eat?',
-                      style: AppText.body.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13)),
-                  const Spacer(),
-                  Icon(Icons.arrow_forward_rounded,
-                      size: 14, color: AppColors.textTertiary),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

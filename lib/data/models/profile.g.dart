@@ -150,115 +150,120 @@ const ProfileSchema = CollectionSchema(
       type: IsarType.string,
       enumMap: _ProfilegoalEnumValueMap,
     ),
-    r'gymMinutesPerSession': PropertySchema(
+    r'goesGym': PropertySchema(
       id: 26,
+      name: r'goesGym',
+      type: IsarType.bool,
+    ),
+    r'gymMinutesPerSession': PropertySchema(
+      id: 27,
       name: r'gymMinutesPerSession',
       type: IsarType.long,
     ),
     r'gymStartDate': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'gymStartDate',
       type: IsarType.dateTime,
     ),
     r'healthFlags': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'healthFlags',
       type: IsarType.stringList,
       enumMap: _ProfilehealthFlagsEnumValueMap,
     ),
     r'heightCm': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'heightCm',
       type: IsarType.double,
     ),
     r'multivitamin': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'multivitamin',
       type: IsarType.bool,
     ),
     r'otherSupplementsNote': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'otherSupplementsNote',
       type: IsarType.string,
     ),
     r'proteinOverride': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'proteinOverride',
       type: IsarType.long,
     ),
     r'proteinScoopsPerDay': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'proteinScoopsPerDay',
       type: IsarType.long,
     ),
     r'proteinTargetG': PropertySchema(
-      id: 34,
+      id: 35,
       name: r'proteinTargetG',
       type: IsarType.long,
     ),
     r'restDays': PropertySchema(
-      id: 35,
+      id: 36,
       name: r'restDays',
       type: IsarType.longList,
     ),
     r'runningKmPerWeek': PropertySchema(
-      id: 36,
+      id: 37,
       name: r'runningKmPerWeek',
       type: IsarType.double,
     ),
     r'sleepTimeMin': PropertySchema(
-      id: 37,
+      id: 38,
       name: r'sleepTimeMin',
       type: IsarType.long,
     ),
     r'tdee': PropertySchema(
-      id: 38,
+      id: 39,
       name: r'tdee',
       type: IsarType.double,
     ),
     r'trainingDaysPerWeek': PropertySchema(
-      id: 39,
+      id: 40,
       name: r'trainingDaysPerWeek',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 40,
+      id: 41,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'wakeTimeMin': PropertySchema(
-      id: 41,
+      id: 42,
       name: r'wakeTimeMin',
       type: IsarType.long,
     ),
     r'walkingKmPerDay': PropertySchema(
-      id: 42,
+      id: 43,
       name: r'walkingKmPerDay',
       type: IsarType.double,
     ),
     r'waterOverride': PropertySchema(
-      id: 43,
+      id: 44,
       name: r'waterOverride',
       type: IsarType.long,
     ),
     r'waterTargetMl': PropertySchema(
-      id: 44,
+      id: 45,
       name: r'waterTargetMl',
       type: IsarType.long,
     ),
     r'weighInCadence': PropertySchema(
-      id: 45,
+      id: 46,
       name: r'weighInCadence',
       type: IsarType.string,
       enumMap: _ProfileweighInCadenceEnumValueMap,
     ),
     r'weighInWeekday': PropertySchema(
-      id: 46,
+      id: 47,
       name: r'weighInWeekday',
       type: IsarType.long,
     ),
     r'weightKg': PropertySchema(
-      id: 47,
+      id: 48,
       name: r'weightKg',
       type: IsarType.double,
     )
@@ -333,29 +338,30 @@ void _profileSerialize(
   writer.writeLong(offsets[23], object.fiberTargetG);
   writer.writeString(offsets[24], object.gender.name);
   writer.writeString(offsets[25], object.goal.name);
-  writer.writeLong(offsets[26], object.gymMinutesPerSession);
-  writer.writeDateTime(offsets[27], object.gymStartDate);
+  writer.writeBool(offsets[26], object.goesGym);
+  writer.writeLong(offsets[27], object.gymMinutesPerSession);
+  writer.writeDateTime(offsets[28], object.gymStartDate);
   writer.writeStringList(
-      offsets[28], object.healthFlags.map((e) => e.name).toList());
-  writer.writeDouble(offsets[29], object.heightCm);
-  writer.writeBool(offsets[30], object.multivitamin);
-  writer.writeString(offsets[31], object.otherSupplementsNote);
-  writer.writeLong(offsets[32], object.proteinOverride);
-  writer.writeLong(offsets[33], object.proteinScoopsPerDay);
-  writer.writeLong(offsets[34], object.proteinTargetG);
-  writer.writeLongList(offsets[35], object.restDays);
-  writer.writeDouble(offsets[36], object.runningKmPerWeek);
-  writer.writeLong(offsets[37], object.sleepTimeMin);
-  writer.writeDouble(offsets[38], object.tdee);
-  writer.writeLong(offsets[39], object.trainingDaysPerWeek);
-  writer.writeDateTime(offsets[40], object.updatedAt);
-  writer.writeLong(offsets[41], object.wakeTimeMin);
-  writer.writeDouble(offsets[42], object.walkingKmPerDay);
-  writer.writeLong(offsets[43], object.waterOverride);
-  writer.writeLong(offsets[44], object.waterTargetMl);
-  writer.writeString(offsets[45], object.weighInCadence.name);
-  writer.writeLong(offsets[46], object.weighInWeekday);
-  writer.writeDouble(offsets[47], object.weightKg);
+      offsets[29], object.healthFlags.map((e) => e.name).toList());
+  writer.writeDouble(offsets[30], object.heightCm);
+  writer.writeBool(offsets[31], object.multivitamin);
+  writer.writeString(offsets[32], object.otherSupplementsNote);
+  writer.writeLong(offsets[33], object.proteinOverride);
+  writer.writeLong(offsets[34], object.proteinScoopsPerDay);
+  writer.writeLong(offsets[35], object.proteinTargetG);
+  writer.writeLongList(offsets[36], object.restDays);
+  writer.writeDouble(offsets[37], object.runningKmPerWeek);
+  writer.writeLong(offsets[38], object.sleepTimeMin);
+  writer.writeDouble(offsets[39], object.tdee);
+  writer.writeLong(offsets[40], object.trainingDaysPerWeek);
+  writer.writeDateTime(offsets[41], object.updatedAt);
+  writer.writeLong(offsets[42], object.wakeTimeMin);
+  writer.writeDouble(offsets[43], object.walkingKmPerDay);
+  writer.writeLong(offsets[44], object.waterOverride);
+  writer.writeLong(offsets[45], object.waterTargetMl);
+  writer.writeString(offsets[46], object.weighInCadence.name);
+  writer.writeLong(offsets[47], object.weighInWeekday);
+  writer.writeDouble(offsets[48], object.weightKg);
 }
 
 Profile _profileDeserialize(
@@ -391,36 +397,37 @@ Profile _profileDeserialize(
   object.goal =
       _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[25])] ??
           FitnessGoal.buildMuscle;
-  object.gymMinutesPerSession = reader.readLong(offsets[26]);
-  object.gymStartDate = reader.readDateTimeOrNull(offsets[27]);
+  object.goesGym = reader.readBool(offsets[26]);
+  object.gymMinutesPerSession = reader.readLong(offsets[27]);
+  object.gymStartDate = reader.readDateTimeOrNull(offsets[28]);
   object.healthFlags = reader
-          .readStringList(offsets[28])
+          .readStringList(offsets[29])
           ?.map(
               (e) => _ProfilehealthFlagsValueEnumMap[e] ?? HealthFlag.pregnant)
           .toList() ??
       [];
-  object.heightCm = reader.readDouble(offsets[29]);
+  object.heightCm = reader.readDouble(offsets[30]);
   object.id = id;
-  object.multivitamin = reader.readBool(offsets[30]);
-  object.otherSupplementsNote = reader.readString(offsets[31]);
-  object.proteinOverride = reader.readLongOrNull(offsets[32]);
-  object.proteinScoopsPerDay = reader.readLong(offsets[33]);
-  object.proteinTargetG = reader.readLong(offsets[34]);
-  object.restDays = reader.readLongList(offsets[35]) ?? [];
-  object.runningKmPerWeek = reader.readDouble(offsets[36]);
-  object.sleepTimeMin = reader.readLong(offsets[37]);
-  object.tdee = reader.readDouble(offsets[38]);
-  object.trainingDaysPerWeek = reader.readLong(offsets[39]);
-  object.updatedAt = reader.readDateTime(offsets[40]);
-  object.wakeTimeMin = reader.readLong(offsets[41]);
-  object.walkingKmPerDay = reader.readDouble(offsets[42]);
-  object.waterOverride = reader.readLongOrNull(offsets[43]);
-  object.waterTargetMl = reader.readLong(offsets[44]);
+  object.multivitamin = reader.readBool(offsets[31]);
+  object.otherSupplementsNote = reader.readString(offsets[32]);
+  object.proteinOverride = reader.readLongOrNull(offsets[33]);
+  object.proteinScoopsPerDay = reader.readLong(offsets[34]);
+  object.proteinTargetG = reader.readLong(offsets[35]);
+  object.restDays = reader.readLongList(offsets[36]) ?? [];
+  object.runningKmPerWeek = reader.readDouble(offsets[37]);
+  object.sleepTimeMin = reader.readLong(offsets[38]);
+  object.tdee = reader.readDouble(offsets[39]);
+  object.trainingDaysPerWeek = reader.readLong(offsets[40]);
+  object.updatedAt = reader.readDateTime(offsets[41]);
+  object.wakeTimeMin = reader.readLong(offsets[42]);
+  object.walkingKmPerDay = reader.readDouble(offsets[43]);
+  object.waterOverride = reader.readLongOrNull(offsets[44]);
+  object.waterTargetMl = reader.readLong(offsets[45]);
   object.weighInCadence = _ProfileweighInCadenceValueEnumMap[
-          reader.readStringOrNull(offsets[45])] ??
+          reader.readStringOrNull(offsets[46])] ??
       WeighInCadence.daily;
-  object.weighInWeekday = reader.readLongOrNull(offsets[46]);
-  object.weightKg = reader.readDouble(offsets[47]);
+  object.weighInWeekday = reader.readLongOrNull(offsets[47]);
+  object.weightKg = reader.readDouble(offsets[48]);
   return object;
 }
 
@@ -488,55 +495,57 @@ P _profileDeserializeProp<P>(
       return (_ProfilegoalValueEnumMap[reader.readStringOrNull(offset)] ??
           FitnessGoal.buildMuscle) as P;
     case 26:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 27:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 28:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 29:
       return (reader
               .readStringList(offset)
               ?.map((e) =>
                   _ProfilehealthFlagsValueEnumMap[e] ?? HealthFlag.pregnant)
               .toList() ??
           []) as P;
-    case 29:
-      return (reader.readDouble(offset)) as P;
     case 30:
-      return (reader.readBool(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 31:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 32:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 33:
-      return (reader.readLong(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 34:
       return (reader.readLong(offset)) as P;
     case 35:
-      return (reader.readLongList(offset) ?? []) as P;
+      return (reader.readLong(offset)) as P;
     case 36:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 37:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 38:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 39:
-      return (reader.readLong(offset)) as P;
-    case 40:
-      return (reader.readDateTime(offset)) as P;
-    case 41:
-      return (reader.readLong(offset)) as P;
-    case 42:
       return (reader.readDouble(offset)) as P;
-    case 43:
-      return (reader.readLongOrNull(offset)) as P;
-    case 44:
+    case 40:
       return (reader.readLong(offset)) as P;
+    case 41:
+      return (reader.readDateTime(offset)) as P;
+    case 42:
+      return (reader.readLong(offset)) as P;
+    case 43:
+      return (reader.readDouble(offset)) as P;
+    case 44:
+      return (reader.readLongOrNull(offset)) as P;
     case 45:
+      return (reader.readLong(offset)) as P;
+    case 46:
       return (_ProfileweighInCadenceValueEnumMap[
               reader.readStringOrNull(offset)] ??
           WeighInCadence.daily) as P;
-    case 46:
-      return (reader.readLongOrNull(offset)) as P;
     case 47:
+      return (reader.readLongOrNull(offset)) as P;
+    case 48:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2608,6 +2617,16 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> goesGymEqualTo(
+      bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'goesGym',
+        value: value,
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition>
       gymMinutesPerSessionEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
@@ -4660,6 +4679,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByGoesGym() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'goesGym', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByGoesGymDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'goesGym', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByGymMinutesPerSession() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'gymMinutesPerSession', Sort.asc);
@@ -5222,6 +5253,18 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByGoesGym() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'goesGym', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByGoesGymDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'goesGym', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByGymMinutesPerSession() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'gymMinutesPerSession', Sort.asc);
@@ -5642,6 +5685,12 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByGoesGym() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'goesGym');
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByGymMinutesPerSession() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'gymMinutesPerSession');
@@ -5943,6 +5992,12 @@ extension ProfileQueryProperty
   QueryBuilder<Profile, FitnessGoal, QQueryOperations> goalProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'goal');
+    });
+  }
+
+  QueryBuilder<Profile, bool, QQueryOperations> goesGymProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'goesGym');
     });
   }
 

@@ -99,6 +99,10 @@ class NutritionRepo {
     int? steps,
     int? heartRateAvg,
     int? sleepMinutes,
+    double? walkingKmToday,
+    double? runningKmToday,
+    int? otherCardioMinutes,
+    String? activityNote,
   }) async {
     final key = DailyLog.keyFor(date);
     return await _isar.writeTxn(() async {
@@ -110,6 +114,12 @@ class NutritionRepo {
       if (steps != null) log.steps = steps;
       if (heartRateAvg != null) log.heartRateAvg = heartRateAvg;
       if (sleepMinutes != null) log.sleepMinutes = sleepMinutes;
+      if (walkingKmToday != null) log.walkingKmToday = walkingKmToday;
+      if (runningKmToday != null) log.runningKmToday = runningKmToday;
+      if (otherCardioMinutes != null) {
+        log.otherCardioMinutes = otherCardioMinutes;
+      }
+      if (activityNote != null) log.activityNote = activityNote;
       log.updatedAt = DateTime.now();
       await _isar.dailyLogs.put(log);
       return log;

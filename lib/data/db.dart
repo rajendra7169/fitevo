@@ -23,6 +23,22 @@ class Db {
     return db;
   }
 
+  /// Wipes every collection. Used by the account-deletion flow so a
+  /// user who hits "Delete account" leaves no local trace behind.
+  /// Does not close or reset the Isar instance — the app keeps running.
+  Future<void> wipeAll() async {
+    await isar.writeTxn(() async {
+      await isar.profiles.clear();
+      await isar.dailyLogs.clear();
+      await isar.foodEntrys.clear();
+      await isar.customFoods.clear();
+      await isar.exercises.clear();
+      await isar.routines.clear();
+      await isar.workoutSessions.clear();
+      await isar.bodyMeasurements.clear();
+    });
+  }
+
   static Future<Db> init() async {
     if (_instance != null) return _instance!;
     final dir = await getApplicationDocumentsDirectory();

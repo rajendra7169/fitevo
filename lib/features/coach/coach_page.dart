@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
@@ -112,11 +113,29 @@ class _CoachPageState extends ConsumerState<CoachPage> {
     }
   }
 
+  static const _cacheKey = 'coachPage.weeklyReviewText';
+  static const _cacheTsKey = 'coachPage.weeklyReviewAt';
+
+  Future<bool> _serveFromCacheIfFresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ts = prefs.getInt(_cacheTsKey);
+    final cached = prefs.getString(_cacheKey);
+    if (ts == null || cached == null || cached.isEmpty) return false;
+    final age = DateTime.now()
+        .difference(DateTime.fromMillisecondsSinceEpoch(ts));
+    if (age.inHours >= 24) return false;
+    if (!mounted) return false;
+    setState(() => _weeklyReview = cached);
+    return true;
+  }
+
   Future<void> _runWeeklyReview(
     Profile profile,
     List<FoodEntry> foods,
-    List<WorkoutSession> sessions,
-  ) async {
+    List<WorkoutSession> sessions, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh && await _serveFromCacheIfFresh()) return;
     setState(() => _reviewing = true);
     try {
       final now = DateTime.now();
@@ -151,6 +170,11 @@ class _CoachPageState extends ConsumerState<CoachPage> {
       final review = await ref
           .read(aiServiceProvider)
           .weeklyReview(contextSummary: summary);
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_cacheKey, review);
+      await prefs.setInt(
+          _cacheTsKey, DateTime.now().millisecondsSinceEpoch);
       if (!mounted) return;
       setState(() => _weeklyReview = review);
     } catch (e) {

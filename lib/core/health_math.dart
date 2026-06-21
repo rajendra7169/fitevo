@@ -135,6 +135,23 @@ class HealthMath {
     return weightKg / (m * m);
   }
 
+  /// Menstrual-cycle phase adjustments. Conservative — these match the
+  /// scientific consensus on luteal-phase metabolic uplift (BMR ~3-5%
+  /// higher, hunger up, fluid retention).
+  static ({int kcalDelta, int waterMlDelta}) cycleAdjustments(
+      CyclePhase phase) {
+    switch (phase) {
+      case CyclePhase.luteal:
+        return (kcalDelta: 100, waterMlDelta: 300);
+      case CyclePhase.menstrual:
+        return (kcalDelta: 0, waterMlDelta: 250);
+      case CyclePhase.ovulation:
+      case CyclePhase.follicular:
+      case CyclePhase.unknown:
+        return (kcalDelta: 0, waterMlDelta: 0);
+    }
+  }
+
   /// Per-keyword adjustments derived from the user's body-focus chips.
   /// Adds (or subtracts) on top of the goal-based calorie target and
   /// nudges protein. Conservative on purpose — these are gentle nudges,
@@ -279,6 +296,7 @@ class HealthMath {
     double? bodyFatPct,
     List<HealthFlag> healthFlags = const [],
     List<int> restDays = const [],
+    CyclePhase cyclePhase = CyclePhase.unknown,
   }) {
     final usedKM = bodyFatPct != null && bodyFatPct >= 3 && bodyFatPct <= 60;
     final b = bestBmr(
@@ -374,6 +392,10 @@ class HealthMath {
     // Flag-driven flat kcal delta (recovery, pregnancy, breastfeeding).
     raw += flagAdj.kcalDelta;
 
+    // Cycle-phase delta (luteal +100 kcal etc.).
+    final cycleAdj = cycleAdjustments(cyclePhase);
+    raw += cycleAdj.kcalDelta;
+
     final floor = calorieFloor(gender);
     final calorieTarget = raw < floor ? floor : raw;
 
@@ -416,7 +438,8 @@ class HealthMath {
         supplementWaterBumpMl(
           creatineGramsPerDay: creatineGramsPerDay,
           proteinScoopsPerDay: proteinScoopsPerDay,
-        );
+        ) +
+        cycleAdj.waterMlDelta;
 
     return ComputedTargets(
       bmr: b,

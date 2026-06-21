@@ -106,12 +106,15 @@ class _AccountPageState extends ConsumerState<AccountPage> {
     final ok = await _confirm(
       title: 'Delete account?',
       body:
-          'Your Firebase account and cloud backup will be deleted. Local data stays on this device.',
-      action: 'Delete',
+          'This wipes your Firebase account, cloud backup, AND every workout, meal, and weigh-in on this device. Cannot be undone.',
+      action: 'Delete everything',
       destructive: true,
     );
     if (!ok) return;
     try {
+      // Wipe local Isar first — if Firebase fails, the user can still
+      // reinstall to clear everything. Reverse order leaves orphan data.
+      await ref.read(dbProvider).wipeAll();
       await ref.read(authServiceProvider).deleteAccount();
       if (!mounted) return;
       Navigator.of(context).popUntil((r) => r.isFirst);

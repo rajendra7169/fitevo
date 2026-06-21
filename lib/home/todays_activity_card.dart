@@ -149,6 +149,7 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
   late final TextEditingController _walking;
   late final TextEditingController _running;
   late final TextEditingController _otherMin;
+  late final TextEditingController _sleepHrs;
   late final TextEditingController _note;
   bool _saving = false;
 
@@ -170,6 +171,12 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
           ? '${widget.initial!.otherCardioMinutes}'
           : '',
     );
+    final sleepMin = widget.initial?.sleepMinutes;
+    _sleepHrs = TextEditingController(
+      text: (sleepMin != null && sleepMin > 0)
+          ? (sleepMin / 60).toStringAsFixed(1)
+          : '',
+    );
     _note = TextEditingController(text: widget.initial?.activityNote ?? '');
   }
 
@@ -178,6 +185,7 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
     _walking.dispose();
     _running.dispose();
     _otherMin.dispose();
+    _sleepHrs.dispose();
     _note.dispose();
     super.dispose();
   }
@@ -187,11 +195,13 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(nutritionRepoProvider);
+      final sleepHrs = double.tryParse(_sleepHrs.text.trim()) ?? 0;
       await repo.upsertDailyLog(
         ref.read(todayProvider),
         walkingKmToday: double.tryParse(_walking.text.trim()) ?? 0,
         runningKmToday: double.tryParse(_running.text.trim()) ?? 0,
         otherCardioMinutes: int.tryParse(_otherMin.text.trim()) ?? 0,
+        sleepMinutes: sleepHrs > 0 ? (sleepHrs * 60).round() : null,
         activityNote: _note.text.trim(),
       );
       if (!mounted) return;
@@ -246,11 +256,26 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
             ],
           ),
           const SizedBox(height: 10),
-          _SheetField(
-            label: 'OTHER CARDIO (MIN)',
-            controller: _otherMin,
-            hint: 'cycling, swim, HIIT…',
-            digits: true,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _SheetField(
+                  label: 'OTHER CARDIO (MIN)',
+                  controller: _otherMin,
+                  hint: 'cycling, swim, HIIT…',
+                  digits: true,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SheetField(
+                  label: 'SLEEP LAST NIGHT (HRS)',
+                  controller: _sleepHrs,
+                  hint: 'e.g. 7.5',
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           _SheetField(
@@ -368,7 +393,7 @@ class TodaysActivityMath {
   }
 
   /// Effective today's calorie target = profile-derived target +
-  /// today's bonus. Used by the calorie ring.
+  /// today's bonus + sleep-debt softener. Used by the calorie ring.
   static int effectiveTodayCalorieTarget({
     required Profile profile,
     required DailyLog? log,
@@ -381,6 +406,52 @@ class TodaysActivityMath {
       runningKmToday: log.runningKmToday,
       otherCardioMinutes: log.otherCardioMinutes,
     );
-    return base + bonus;
+    return base + bonus + sleepDebtSoftener(log.sleepMinutes);
+  }
+
+  /// When the user logs < 7h sleep, deficits hurt recovery harder. Add
+  /// 50 kcal back for every 30-min shortfall below 7h, capped at 150.
+  /// Returns 0 when sleep is null or >= 7h.
+  static int sleepDebtSoftener(int? sleepMinutes) {
+    if (sleepMinutes == null || sleepMinutes <= 0) return 0;
+    final shortfall = (7 * 60) - sleepMinutes;
+    if (shortfall <= 0) return 0;
+    final units = (shortfall / 30).ceil();
+    return (units * 50).clamp(0, 150);
+  }
+
+  /// Split today's bonus kcal across macros: carbs take 70% (running
+  /// uses glycogen), protein 20% (recovery), fat 10%. Returns the
+  /// per-macro grams *added* to the base profile target.
+  static ({int proteinG, int carbG, int fatG}) bonusMacros({
+    required Profile profile,
+    required DailyLog? log,
+  }) {
+    if (log == null) return (proteinG: 0, carbG: 0, fatG: 0);
+    final bonus = bonusKcal(
+      profile: profile,
+      walkingKmToday: log.walkingKmToday,
+      runningKmToday: log.runningKmToday,
+      otherCardioMinutes: log.otherCardioMinutes,
+    );
+    if (bonus <= 0) return (proteinG: 0, carbG: 0, fatG: 0);
+    return (
+      proteinG: (bonus * 0.20 / 4).round(),
+      carbG: (bonus * 0.70 / 4).round(),
+      fatG: (bonus * 0.10 / 9).round(),
+    );
+  }
+
+  /// Convenience: effective macro targets for today.
+  static ({int proteinG, int carbG, int fatG}) effectiveTodayMacros({
+    required Profile profile,
+    required DailyLog? log,
+  }) {
+    final extra = bonusMacros(profile: profile, log: log);
+    return (
+      proteinG: profile.effectiveProteinTarget + extra.proteinG,
+      carbG: profile.effectiveCarbTarget + extra.carbG,
+      fatG: profile.effectiveFatTarget + extra.fatG,
+    );
   }
 }

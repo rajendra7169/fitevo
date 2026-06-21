@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../core/health_math.dart';
+import '../core/workout_math.dart';
 import '../data/models/food_entry.dart';
 import '../data/models/profile.dart';
 import '../data/models/workout_session.dart';
@@ -23,6 +24,8 @@ import '../features/workout/workout_page.dart';
 import '../services/ai/ai_service.dart';
 import '../services/hero_greeting.dart';
 import 'adaptive_nudge_card.dart';
+import 'coach_context_nudge.dart';
+import 'quick_weigh_in_card.dart';
 import 'todays_activity_card.dart';
 import 'weekly_recap_card.dart';
 import '../services/progress/streak_calc.dart';
@@ -84,14 +87,18 @@ class DashboardPage extends ConsumerWidget {
             section(4, _WaterFiberChips(profile: profile, totals: totals)),
             const SizedBox(height: 22),
             section(5, TodaysActivityCard(profile: profile)),
+            const SizedBox(height: 10),
+            section(6, const QuickWeighInCard()),
+            const SizedBox(height: 10),
+            section(7, const CoachContextNudge()),
             const SizedBox(height: 22),
-            section(6, const AdaptiveNudgeCard()),
+            section(8, const AdaptiveNudgeCard()),
             const SizedBox(height: 22),
-            section(7, const _WorkoutCard()),
+            section(9, const _WorkoutCard()),
             const SizedBox(height: 22),
-            section(8, const WeeklyRecapCard()),
+            section(10, const WeeklyRecapCard()),
             const SizedBox(height: 22),
-            section(9, _RecentMealsShelf(entries: entries)),
+            section(11, _RecentMealsShelf(entries: entries)),
           ],
         ),
       ),
@@ -788,7 +795,7 @@ class _RingPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
-class _MacrosRow extends StatelessWidget {
+class _MacrosRow extends ConsumerWidget {
   final Profile profile;
   final DailyTotals totals;
   const _MacrosRow({required this.profile, required this.totals});
@@ -800,14 +807,17 @@ class _MacrosRow extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final log = ref.watch(todayLogProvider).valueOrNull;
+    final m = TodaysActivityMath.effectiveTodayMacros(
+        profile: profile, log: log);
     return Row(
       children: [
         Expanded(
           child: _MacroBar(
             label: 'Protein',
             consumed: totals.proteinG,
-            target: profile.effectiveProteinTarget,
+            target: m.proteinG,
             color: AppColors.protein,
             onTap: () => _openDetail(context, NutrientType.protein),
           ),
@@ -817,7 +827,7 @@ class _MacrosRow extends StatelessWidget {
           child: _MacroBar(
             label: 'Carbs',
             consumed: totals.carbsG,
-            target: profile.effectiveCarbTarget,
+            target: m.carbG,
             color: AppColors.carbs,
             onTap: () => _openDetail(context, NutrientType.carbs),
           ),
@@ -827,7 +837,7 @@ class _MacrosRow extends StatelessWidget {
           child: _MacroBar(
             label: 'Fat',
             consumed: totals.fatG,
-            target: profile.effectiveFatTarget,
+            target: m.fatG,
             color: AppColors.fat,
             onTap: () => _openDetail(context, NutrientType.fat),
           ),
@@ -1118,12 +1128,18 @@ class _WorkoutCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final routineAsync = ref.watch(activeRoutineProvider);
     final dayAsync = ref.watch(todaysRoutineDayProvider);
+    final sessions =
+        ref.watch(allSessionsProvider).valueOrNull ?? const <WorkoutSession>[];
 
     final routine = routineAsync.valueOrNull;
     final day = dayAsync.valueOrNull;
 
+    final plateaus = WorkoutMath.plateaus(sessions, staleWeeks: 3);
+    final plateauHint = plateaus.isEmpty ? null : plateaus.first;
+
+    Widget shell;
     if (routine == null) {
-      return _WorkoutCardShell(
+      shell = _WorkoutCardShell(
         icon: Icons.fitness_center_rounded,
         accent: AppColors.accent,
         label: 'WORKOUT',
@@ -1135,35 +1151,79 @@ class _WorkoutCard extends ConsumerWidget {
           );
         },
       );
-    }
-
-    if (day == null || day.isRest) {
-      return _WorkoutCardShell(
+    } else if (day == null || day.isRest) {
+      shell = _WorkoutCardShell(
         icon: Icons.self_improvement_rounded,
         accent: AppColors.water,
         label: 'TODAY',
         title: 'Rest day',
         subtitle: 'Recovery matters as much as training.',
       );
+    } else {
+      shell = _WorkoutCardShell(
+        icon: Icons.fitness_center_rounded,
+        accent: AppColors.accent,
+        label: 'TODAY',
+        title: day.name,
+        subtitle: '${day.items.length} exercises · ${routine.name}',
+        action: 'Start',
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => WorkoutLoggerPage(
+                routineName: routine.name,
+                day: day,
+              ),
+            ),
+          );
+        },
+      );
     }
 
-    return _WorkoutCardShell(
-      icon: Icons.fitness_center_rounded,
-      accent: AppColors.accent,
-      label: 'TODAY',
-      title: day.name,
-      subtitle: '${day.items.length} exercises · ${routine.name}',
-      action: 'Start',
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => WorkoutLoggerPage(
-              routineName: routine.name,
-              day: day,
+    if (plateauHint == null) return shell;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        shell,
+        const SizedBox(height: 8),
+        _PlateauStrip(p: plateauHint),
+      ],
+    );
+  }
+}
+
+class _PlateauStrip extends StatelessWidget {
+  final PlateauSignal p;
+  const _PlateauStrip({required this.p});
+
+  String _suggestedJump() {
+    // Add ~2.5kg for lifts above 40kg, ~1.25kg for accessories.
+    final bump = p.topWeightKg >= 40 ? 2.5 : 1.25;
+    return (p.topWeightKg + bump).toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 16, color: Colors.amber),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${p.exerciseName} stuck ${p.weeksStale} weeks at ${p.topWeightKg.toStringAsFixed(1)}kg × ${p.topReps}. Try ${_suggestedJump()}kg today.',
+              style: AppText.body.copyWith(fontSize: 12.5, height: 1.35),
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

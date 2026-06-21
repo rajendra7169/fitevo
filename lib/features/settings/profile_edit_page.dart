@@ -56,6 +56,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   WeighInCadence _cadence = WeighInCadence.weekly;
   int? _weighInWeekday;
   bool _goesGym = true;
+  CyclePhase _cyclePhase = CyclePhase.unknown;
 
   late TextEditingController _calOverride;
   late TextEditingController _proteinOverride;
@@ -138,6 +139,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     _focusNotes.text = p.bodyFocusNotes;
     _gymStartDate = p.gymStartDate;
     _goesGym = p.goesGym;
+    _cyclePhase = p.cyclePhase;
     _bodyFatPct = p.bodyFatPct;
     _healthFlags = List.of(p.healthFlags);
     _restDays = List.of(p.restDays);
@@ -280,6 +282,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         bodyFatPct: _bodyFatPct,
         healthFlags: _healthFlags,
         restDays: _restDays,
+        cyclePhase: _cyclePhase,
       );
 
       p
@@ -309,6 +312,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..weighInCadence = _cadence
         ..weighInWeekday = _weighInWeekday
         ..goesGym = _goesGym
+        ..cyclePhase = _cyclePhase
         ..bmr = t.bmr
         ..tdee = t.tdee
         ..calorieTarget = t.calorieTarget
@@ -590,6 +594,20 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                         value: _cadence,
                         onChanged: (c) => setState(() => _cadence = c),
                       ),
+                      if (_gender == Gender.female) ...[
+                        const SizedBox(height: 14),
+                        Text('CYCLE PHASE', style: AppText.label),
+                        const SizedBox(height: 4),
+                        Text(
+                            'Luteal phase = +100 kcal hunger bump; menstrual = +250 ml water.',
+                            style: AppText.meta.copyWith(fontSize: 11)),
+                        const SizedBox(height: 8),
+                        _CyclePhasePicker(
+                          value: _cyclePhase,
+                          onChanged: (c) =>
+                              setState(() => _cyclePhase = c),
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       Text('HEALTH CONTEXT', style: AppText.label),
                       const SizedBox(height: 8),
@@ -1358,6 +1376,55 @@ class _GymExperienceField extends StatelessWidget {
                       : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _CyclePhasePicker extends StatelessWidget {
+  final CyclePhase value;
+  final ValueChanged<CyclePhase> onChanged;
+  const _CyclePhasePicker({required this.value, required this.onChanged});
+
+  static const _options = <(CyclePhase, String)>[
+    (CyclePhase.unknown, 'Skip'),
+    (CyclePhase.menstrual, 'Menstrual'),
+    (CyclePhase.follicular, 'Follicular'),
+    (CyclePhase.ovulation, 'Ovulation'),
+    (CyclePhase.luteal, 'Luteal'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _options.map((o) {
+        final on = o.$1 == value;
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
                 )),
           ),
         );

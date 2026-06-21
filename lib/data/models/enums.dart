@@ -44,6 +44,17 @@ enum HealthFlag {
 /// reminder lands on a specific day each cycle.
 enum WeighInCadence { daily, everyOtherDay, twiceAWeek, weekly }
 
+/// Menstrual-cycle phase (female users only). Affects water retention,
+/// hunger, and lifting performance. Tracked manually for now via a quick
+/// picker; could be derived from a logged period start date later.
+enum CyclePhase {
+  unknown,
+  menstrual, // days 1-5
+  follicular, // days 6-14
+  ovulation, // days 14-16
+  luteal, // days 17-28
+}
+
 enum Equipment {
   bodyweight,
   dumbbell,

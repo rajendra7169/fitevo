@@ -226,9 +226,88 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
     if (session == null) return;
     final ok = await _confirmFinish(session.sets.isEmpty);
     if (!ok) return;
+    // Snapshot before save so we can count PRs achieved this session.
+    final prsBefore = _prsBeforeSession();
     await ref.read(workoutRepoProvider).completeSession(session.id);
     if (!mounted) return;
+    _showSessionSummary(session, prsBefore);
     Navigator.of(context).pop();
+  }
+
+  Map<String, double> _prsBeforeSession() {
+    final allSessions =
+        ref.read(allSessionsProvider).valueOrNull ?? const <WorkoutSession>[];
+    final current = _session;
+    final prior = allSessions.where((s) => s.id != current?.id).toList();
+    final best = <String, double>{};
+    for (final s in prior) {
+      for (final set in s.sets) {
+        if (set.isWarmup || set.weightKg <= 0 || set.reps <= 0) continue;
+        final e = set.weightKg * (1 + set.reps / 30.0);
+        final cur = best[set.exerciseName] ?? 0;
+        if (e > cur) best[set.exerciseName] = e;
+      }
+    }
+    return best;
+  }
+
+  void _showSessionSummary(
+      WorkoutSession session, Map<String, double> prsBefore) {
+    var prsThisSession = 0;
+    double tonnage = 0;
+    var workingSets = 0;
+    for (final set in session.sets) {
+      if (set.isWarmup || set.weightKg <= 0 || set.reps <= 0) continue;
+      workingSets++;
+      tonnage += set.weightKg * set.reps;
+      final e = set.weightKg * (1 + set.reps / 30.0);
+      final prior = prsBefore[set.exerciseName] ?? 0;
+      if (e > prior + 0.5) {
+        prsThisSession++;
+        prsBefore[set.exerciseName] = e;
+      }
+    }
+    if (workingSets == 0) return;
+    final prText = prsThisSession == 0
+        ? 'Session done.'
+        : '$prsThisSession PR${prsThisSession == 1 ? '' : 's'} this session.';
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        backgroundColor: prsThisSession > 0
+            ? AppColors.accent
+            : AppColors.surfaceHigh,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14)),
+        content: Row(
+          children: [
+            Icon(
+                prsThisSession > 0
+                    ? Icons.emoji_events_rounded
+                    : Icons.check_circle_rounded,
+                color: prsThisSession > 0
+                    ? Colors.black
+                    : AppColors.textPrimary,
+                size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '$prText  •  $workingSets sets · ${tonnage.toStringAsFixed(0)} kg total',
+                style: TextStyle(
+                  color: prsThisSession > 0
+                      ? Colors.black
+                      : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ));
   }
 
   Future<bool> _confirmFinish(bool empty) async {

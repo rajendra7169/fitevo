@@ -84,6 +84,12 @@ class Profile {
   // strength-day / gym-minute math.
   bool goesGym = true;
 
+  // Optional menstrual-cycle context (female users). When set, the
+  // luteal phase bumps calories slightly (hormonal hunger), AI advisory
+  // gains context, and water target rises in the late luteal week.
+  @Enumerated(EnumType.name)
+  CyclePhase cyclePhase = CyclePhase.unknown;
+
   // Derived & cached
   late double bmr;
   late double tdee;

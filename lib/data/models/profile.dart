@@ -84,6 +84,16 @@ class Profile {
   // strength-day / gym-minute math.
   bool goesGym = true;
 
+  // 2-letter ISO country code (e.g. "NP", "IN", "US"). When set, the
+  // AI coach surfaces region-appropriate food suggestions instead of
+  // defaulting to generic Western meals.
+  String country = '';
+
+  // Dietary preference — drives meal suggestions and protein-source
+  // recommendations.
+  @Enumerated(EnumType.name)
+  DietPreference dietPreference = DietPreference.omnivore;
+
   // Optional menstrual-cycle context (female users). When set, the
   // luteal phase bumps calories slightly (hormonal hunger), AI advisory
   // gains context, and water target rises in the late luteal week.

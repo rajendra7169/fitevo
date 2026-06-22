@@ -50,6 +50,10 @@ class _Draft {
   // Daily running km — the user enters a typical per-day value; the
   // home page lets them log actual km on the day they run.
   double runningKmPerDay = 0;
+
+  // Region + diet for culturally-aware AI suggestions.
+  String country = '';
+  DietPreference dietPreference = DietPreference.omnivore;
 }
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -150,6 +154,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..gymMinutesPerSession =
           _draft.goesGym ? _draft.gymMinutesPerSession : 0
       ..goesGym = _draft.goesGym
+      ..country = _draft.country
+      ..dietPreference = _draft.dietPreference
       ..wakeTimeMin = _draft.wakeMin
       ..sleepTimeMin = _draft.sleepMin
       ..creatineGramsPerDay = _draft.takesSupplements ? _draft.creatineG : 0
@@ -388,6 +394,30 @@ class _StepAboutState extends State<_StepAbout> {
             ],
             onChanged: (g) {
               widget.draft.gender = g;
+              widget.onChanged();
+            },
+          ),
+          const SizedBox(height: 24),
+          Text('COUNTRY', style: AppText.label),
+          const SizedBox(height: 6),
+          Text(
+              'So the coach suggests dal-bhat in Nepal, not chicken Caesar salad.',
+              style: AppText.meta.copyWith(fontSize: 12)),
+          const SizedBox(height: 10),
+          _CountryPicker(
+            value: widget.draft.country,
+            onChanged: (c) {
+              widget.draft.country = c;
+              widget.onChanged();
+            },
+          ),
+          const SizedBox(height: 24),
+          Text('DIET', style: AppText.label),
+          const SizedBox(height: 10),
+          _DietPicker(
+            value: widget.draft.dietPreference,
+            onChanged: (d) {
+              widget.draft.dietPreference = d;
               widget.onChanged();
             },
           ),
@@ -648,6 +678,277 @@ class _StepGoal extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Top-tier countries we explicitly support for cuisine matching. The
+/// "Other" path is open text. Ordered by app-user concentration: South
+/// Asia first (where the dev is), then the rest alphabetically.
+const List<(String, String)> _commonCountries = [
+  ('NP', 'Nepal'),
+  ('IN', 'India'),
+  ('BD', 'Bangladesh'),
+  ('PK', 'Pakistan'),
+  ('LK', 'Sri Lanka'),
+  ('AU', 'Australia'),
+  ('BR', 'Brazil'),
+  ('CA', 'Canada'),
+  ('CN', 'China'),
+  ('DE', 'Germany'),
+  ('FR', 'France'),
+  ('ID', 'Indonesia'),
+  ('IT', 'Italy'),
+  ('JP', 'Japan'),
+  ('KR', 'South Korea'),
+  ('MX', 'Mexico'),
+  ('MY', 'Malaysia'),
+  ('PH', 'Philippines'),
+  ('SG', 'Singapore'),
+  ('TH', 'Thailand'),
+  ('TR', 'Turkey'),
+  ('UK', 'United Kingdom'),
+  ('US', 'United States'),
+  ('VN', 'Vietnam'),
+];
+
+class _CountryPicker extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _CountryPicker({required this.value, required this.onChanged});
+
+  String _displayLabel() {
+    if (value.isEmpty) return 'Pick your country';
+    final match =
+        _commonCountries.where((c) => c.$1 == value).toList();
+    if (match.isNotEmpty) return match.first.$2;
+    return value;
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => _CountrySheet(initial: value),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final set = value.isNotEmpty;
+    return GestureDetector(
+      onTap: () => _open(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: set ? AppColors.accent : AppColors.stroke),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.public_rounded,
+                size: 18,
+                color: set ? AppColors.accent : AppColors.textTertiary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(_displayLabel(),
+                  style: AppText.body.copyWith(
+                      color:
+                          set ? AppColors.textPrimary : AppColors.textTertiary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14)),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                size: 18, color: AppColors.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CountrySheet extends StatefulWidget {
+  final String initial;
+  const _CountrySheet({required this.initial});
+
+  @override
+  State<_CountrySheet> createState() => _CountrySheetState();
+}
+
+class _CountrySheetState extends State<_CountrySheet> {
+  late final TextEditingController _search;
+
+  @override
+  void initState() {
+    super.initState();
+    _search = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<(String, String)> _filtered() {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return _commonCountries;
+    return _commonCountries
+        .where((c) =>
+            c.$2.toLowerCase().contains(q) || c.$1.toLowerCase() == q)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pad = MediaQuery.of(context).viewInsets.bottom;
+    final list = _filtered();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + pad),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Text('Country', style: AppText.sectionTitle),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextField(
+              controller: _search,
+              autofocus: false,
+              cursorColor: AppColors.accent,
+              onChanged: (_) => setState(() {}),
+              style: AppText.body.copyWith(fontSize: 14),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 14),
+                hintText: 'Search…',
+                hintStyle: AppText.body.copyWith(
+                    color: AppColors.textTertiary, fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.55),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: list.length,
+              itemBuilder: (_, i) {
+                final c = list[i];
+                final selected = c.$1 == widget.initial;
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).pop(c.$1),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.fromLTRB(4, 14, 4, 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          alignment: Alignment.center,
+                          child: Text(c.$1,
+                              style: AppText.label.copyWith(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 11)),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(c.$2,
+                              style: AppText.body.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14)),
+                        ),
+                        if (selected)
+                          Icon(Icons.check_rounded,
+                              size: 18, color: AppColors.accent),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DietPicker extends StatelessWidget {
+  final DietPreference value;
+  final ValueChanged<DietPreference> onChanged;
+  const _DietPicker({required this.value, required this.onChanged});
+
+  static const _options = <(DietPreference, String)>[
+    (DietPreference.omnivore, 'Omnivore'),
+    (DietPreference.vegetarian, 'Vegetarian'),
+    (DietPreference.vegan, 'Vegan'),
+    (DietPreference.pescatarian, 'Pescatarian'),
+    (DietPreference.keto, 'Keto'),
+    (DietPreference.halal, 'Halal'),
+    (DietPreference.kosher, 'Kosher'),
+    (DietPreference.jain, 'Jain'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _options.map((o) {
+        final on = o.$1 == value;
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                )),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -1798,14 +2099,24 @@ class _AdvisoryCardState extends ConsumerState<_AdvisoryCard> {
         : 'none';
     return [
       'Age: ${d.age}, ${d.gender.name}, ${d.heightCm.round()}cm, ${d.weightKg.toStringAsFixed(1)}kg (BMI ${t.bmi.toStringAsFixed(1)})',
+      if (d.country.isNotEmpty) 'Country: ${d.country}',
+      'Diet preference: ${d.dietPreference.name}',
+      'Trains at a gym: ${d.goesGym ? "yes" : "no"}',
       'Activity label: ${d.activity.name}',
-      'Strength: ${d.trainingDays}d/wk x ${d.gymMinutesPerSession}min',
+      if (d.goesGym)
+        'Strength: ${d.trainingDays}d/wk x ${d.gymMinutesPerSession}min',
+      if (d.gymMonthsAgo != null)
+        'Gym experience: ~${d.gymMonthsAgo} months',
       'Walking: ${d.walkingKmPerDay.toStringAsFixed(1)} km/day',
-      'Running: ${d.runningKmPerWeek.toStringAsFixed(0)} km/week',
+      'Running: ${d.runningKmPerDay.toStringAsFixed(1)} km/day',
+      if (d.restDays.isNotEmpty) 'Rest days: ${d.restDays.join(",")}',
       'Goal: ${d.goal.name}',
       'Body focus: ${d.focusNotes.isEmpty ? "none" : d.focusNotes}',
       'Sleep window: $wakeH:$wakeM to $sleepH:$sleepM',
       'Supplements: $supp',
+      if (d.bodyFatPct != null) 'Body fat: ${d.bodyFatPct}%',
+      if (d.healthFlags.isNotEmpty)
+        'Health flags: ${d.healthFlags.map((f) => f.name).join(", ")}',
       '',
       'Computed targets:',
       'Calories ${t.calorieTarget} kcal, Protein ${t.proteinG}g, Carbs ${t.carbG}g, Fat ${t.fatG}g, Fiber ${t.fiberG}g, Water ${(t.waterMl / 1000).toStringAsFixed(1)}L',

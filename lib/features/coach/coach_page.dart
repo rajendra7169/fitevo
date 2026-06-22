@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/models/enums.dart';
 import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/workout_session.dart';
@@ -62,12 +63,25 @@ class _CoachPageState extends ConsumerState<CoachPage> {
     return [
       'Name: ${profile.displayName.isEmpty ? "user" : profile.displayName}',
       'Goal: $goal',
+      if (profile.country.isNotEmpty) 'Country: ${profile.country}',
+      'Diet: ${profile.dietPreference.name}',
       'Calorie target: ${profile.effectiveCalorieTarget} kcal',
       'Protein target: ${profile.effectiveProteinTarget}g',
       'Weight: ${profile.weightKg.toStringAsFixed(1)} kg',
       'Strength training: ${profile.trainingDaysPerWeek} days/week',
       'Cardio: ${profile.cardioSessionsPerWeek} sessions/week',
       if (focus.isNotEmpty) 'Body focus: $focus',
+      if (profile.restDays.isNotEmpty)
+        'Rest days: ${profile.restDays.join(",")}',
+      if (profile.gymStartDate != null)
+        'Gym experience: ${DateTime.now().difference(profile.gymStartDate!).inDays ~/ 30} months',
+      if (profile.bodyFatPct != null)
+        'Body fat: ${profile.bodyFatPct!.toStringAsFixed(0)}%',
+      if (profile.healthFlags.isNotEmpty)
+        'Health flags: ${profile.healthFlags.map((f) => f.name).join(", ")}',
+      if (profile.gender == Gender.female &&
+          profile.cyclePhase != CyclePhase.unknown)
+        'Cycle phase: ${profile.cyclePhase.name}',
       'Today so far: ${totals.calories} kcal, ${totals.proteinG}g protein',
       'Current streak: $streak days',
       'PRs achieved: $prCount',
@@ -160,6 +174,10 @@ class _CoachPageState extends ConsumerState<CoachPage> {
       final prs = PrTracker.personalRecords(sessions);
       final summary = [
         'Goal: ${profile.goal.name}',
+        if (profile.country.isNotEmpty) 'Country: ${profile.country}',
+        'Diet: ${profile.dietPreference.name}',
+        if (profile.bodyFocusNotes.isNotEmpty)
+          'Body focus: ${profile.bodyFocusNotes}',
         'Calorie target: ${profile.effectiveCalorieTarget} kcal',
         'Protein target: ${profile.effectiveProteinTarget}g',
         'Days with food logs this week: $daysLogged',

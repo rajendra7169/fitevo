@@ -44,6 +44,20 @@ enum HealthFlag {
 /// reminder lands on a specific day each cycle.
 enum WeighInCadence { daily, everyOtherDay, twiceAWeek, weekly }
 
+/// Dietary preference for food suggestions and AI advice. Affects which
+/// proteins the coach recommends, which cuisines are surfaced, and what
+/// gets flagged as off-plan.
+enum DietPreference {
+  omnivore,
+  vegetarian,
+  vegan,
+  pescatarian,
+  keto,
+  halal,
+  kosher,
+  jain,
+}
+
 /// Menstrual-cycle phase (female users only). Affects water retention,
 /// hunger, and lifting performance. Tracked manually for now via a quick
 /// picker; could be derived from a logged period start date later.

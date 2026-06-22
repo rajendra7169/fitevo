@@ -73,203 +73,214 @@ const ProfileSchema = CollectionSchema(
       name: r'cardioSessionsPerWeek',
       type: IsarType.long,
     ),
-    r'createdAt': PropertySchema(
+    r'country': PropertySchema(
       id: 11,
+      name: r'country',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 12,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'creatineGramsPerDay': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'creatineGramsPerDay',
       type: IsarType.long,
     ),
     r'cyclePhase': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'cyclePhase',
       type: IsarType.string,
       enumMap: _ProfilecyclePhaseEnumValueMap,
     ),
+    r'dietPreference': PropertySchema(
+      id: 15,
+      name: r'dietPreference',
+      type: IsarType.string,
+      enumMap: _ProfiledietPreferenceEnumValueMap,
+    ),
     r'displayName': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'displayName',
       type: IsarType.string,
     ),
     r'effectiveCalorieTarget': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'effectiveCalorieTarget',
       type: IsarType.long,
     ),
     r'effectiveCarbTarget': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'effectiveCarbTarget',
       type: IsarType.long,
     ),
     r'effectiveFatTarget': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'effectiveFatTarget',
       type: IsarType.long,
     ),
     r'effectiveFiberTarget': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'effectiveFiberTarget',
       type: IsarType.long,
     ),
     r'effectiveProteinTarget': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'effectiveProteinTarget',
       type: IsarType.long,
     ),
     r'effectiveWaterTarget': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'effectiveWaterTarget',
       type: IsarType.long,
     ),
     r'fatOverride': PropertySchema(
-      id: 21,
+      id: 23,
       name: r'fatOverride',
       type: IsarType.long,
     ),
     r'fatTargetG': PropertySchema(
-      id: 22,
+      id: 24,
       name: r'fatTargetG',
       type: IsarType.long,
     ),
     r'fiberOverride': PropertySchema(
-      id: 23,
+      id: 25,
       name: r'fiberOverride',
       type: IsarType.long,
     ),
     r'fiberTargetG': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'fiberTargetG',
       type: IsarType.long,
     ),
     r'gender': PropertySchema(
-      id: 25,
+      id: 27,
       name: r'gender',
       type: IsarType.string,
       enumMap: _ProfilegenderEnumValueMap,
     ),
     r'goal': PropertySchema(
-      id: 26,
+      id: 28,
       name: r'goal',
       type: IsarType.string,
       enumMap: _ProfilegoalEnumValueMap,
     ),
     r'goesGym': PropertySchema(
-      id: 27,
+      id: 29,
       name: r'goesGym',
       type: IsarType.bool,
     ),
     r'gymMinutesPerSession': PropertySchema(
-      id: 28,
+      id: 30,
       name: r'gymMinutesPerSession',
       type: IsarType.long,
     ),
     r'gymStartDate': PropertySchema(
-      id: 29,
+      id: 31,
       name: r'gymStartDate',
       type: IsarType.dateTime,
     ),
     r'healthFlags': PropertySchema(
-      id: 30,
+      id: 32,
       name: r'healthFlags',
       type: IsarType.stringList,
       enumMap: _ProfilehealthFlagsEnumValueMap,
     ),
     r'heightCm': PropertySchema(
-      id: 31,
+      id: 33,
       name: r'heightCm',
       type: IsarType.double,
     ),
     r'multivitamin': PropertySchema(
-      id: 32,
+      id: 34,
       name: r'multivitamin',
       type: IsarType.bool,
     ),
     r'otherSupplementsNote': PropertySchema(
-      id: 33,
+      id: 35,
       name: r'otherSupplementsNote',
       type: IsarType.string,
     ),
     r'proteinOverride': PropertySchema(
-      id: 34,
+      id: 36,
       name: r'proteinOverride',
       type: IsarType.long,
     ),
     r'proteinScoopsPerDay': PropertySchema(
-      id: 35,
+      id: 37,
       name: r'proteinScoopsPerDay',
       type: IsarType.long,
     ),
     r'proteinTargetG': PropertySchema(
-      id: 36,
+      id: 38,
       name: r'proteinTargetG',
       type: IsarType.long,
     ),
     r'restDays': PropertySchema(
-      id: 37,
+      id: 39,
       name: r'restDays',
       type: IsarType.longList,
     ),
     r'runningKmPerWeek': PropertySchema(
-      id: 38,
+      id: 40,
       name: r'runningKmPerWeek',
       type: IsarType.double,
     ),
     r'sleepTimeMin': PropertySchema(
-      id: 39,
+      id: 41,
       name: r'sleepTimeMin',
       type: IsarType.long,
     ),
     r'tdee': PropertySchema(
-      id: 40,
+      id: 42,
       name: r'tdee',
       type: IsarType.double,
     ),
     r'trainingDaysPerWeek': PropertySchema(
-      id: 41,
+      id: 43,
       name: r'trainingDaysPerWeek',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 42,
+      id: 44,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'wakeTimeMin': PropertySchema(
-      id: 43,
+      id: 45,
       name: r'wakeTimeMin',
       type: IsarType.long,
     ),
     r'walkingKmPerDay': PropertySchema(
-      id: 44,
+      id: 46,
       name: r'walkingKmPerDay',
       type: IsarType.double,
     ),
     r'waterOverride': PropertySchema(
-      id: 45,
+      id: 47,
       name: r'waterOverride',
       type: IsarType.long,
     ),
     r'waterTargetMl': PropertySchema(
-      id: 46,
+      id: 48,
       name: r'waterTargetMl',
       type: IsarType.long,
     ),
     r'weighInCadence': PropertySchema(
-      id: 47,
+      id: 49,
       name: r'weighInCadence',
       type: IsarType.string,
       enumMap: _ProfileweighInCadenceEnumValueMap,
     ),
     r'weighInWeekday': PropertySchema(
-      id: 48,
+      id: 50,
       name: r'weighInWeekday',
       type: IsarType.long,
     ),
     r'weightKg': PropertySchema(
-      id: 49,
+      id: 51,
       name: r'weightKg',
       type: IsarType.double,
     )
@@ -296,7 +307,9 @@ int _profileEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.activityLevel.name.length * 3;
   bytesCount += 3 + object.bodyFocusNotes.length * 3;
+  bytesCount += 3 + object.country.length * 3;
   bytesCount += 3 + object.cyclePhase.name.length * 3;
+  bytesCount += 3 + object.dietPreference.name.length * 3;
   bytesCount += 3 + object.displayName.length * 3;
   bytesCount += 3 + object.gender.name.length * 3;
   bytesCount += 3 + object.goal.name.length * 3;
@@ -330,46 +343,48 @@ void _profileSerialize(
   writer.writeLong(offsets[8], object.carbOverride);
   writer.writeLong(offsets[9], object.carbTargetG);
   writer.writeLong(offsets[10], object.cardioSessionsPerWeek);
-  writer.writeDateTime(offsets[11], object.createdAt);
-  writer.writeLong(offsets[12], object.creatineGramsPerDay);
-  writer.writeString(offsets[13], object.cyclePhase.name);
-  writer.writeString(offsets[14], object.displayName);
-  writer.writeLong(offsets[15], object.effectiveCalorieTarget);
-  writer.writeLong(offsets[16], object.effectiveCarbTarget);
-  writer.writeLong(offsets[17], object.effectiveFatTarget);
-  writer.writeLong(offsets[18], object.effectiveFiberTarget);
-  writer.writeLong(offsets[19], object.effectiveProteinTarget);
-  writer.writeLong(offsets[20], object.effectiveWaterTarget);
-  writer.writeLong(offsets[21], object.fatOverride);
-  writer.writeLong(offsets[22], object.fatTargetG);
-  writer.writeLong(offsets[23], object.fiberOverride);
-  writer.writeLong(offsets[24], object.fiberTargetG);
-  writer.writeString(offsets[25], object.gender.name);
-  writer.writeString(offsets[26], object.goal.name);
-  writer.writeBool(offsets[27], object.goesGym);
-  writer.writeLong(offsets[28], object.gymMinutesPerSession);
-  writer.writeDateTime(offsets[29], object.gymStartDate);
+  writer.writeString(offsets[11], object.country);
+  writer.writeDateTime(offsets[12], object.createdAt);
+  writer.writeLong(offsets[13], object.creatineGramsPerDay);
+  writer.writeString(offsets[14], object.cyclePhase.name);
+  writer.writeString(offsets[15], object.dietPreference.name);
+  writer.writeString(offsets[16], object.displayName);
+  writer.writeLong(offsets[17], object.effectiveCalorieTarget);
+  writer.writeLong(offsets[18], object.effectiveCarbTarget);
+  writer.writeLong(offsets[19], object.effectiveFatTarget);
+  writer.writeLong(offsets[20], object.effectiveFiberTarget);
+  writer.writeLong(offsets[21], object.effectiveProteinTarget);
+  writer.writeLong(offsets[22], object.effectiveWaterTarget);
+  writer.writeLong(offsets[23], object.fatOverride);
+  writer.writeLong(offsets[24], object.fatTargetG);
+  writer.writeLong(offsets[25], object.fiberOverride);
+  writer.writeLong(offsets[26], object.fiberTargetG);
+  writer.writeString(offsets[27], object.gender.name);
+  writer.writeString(offsets[28], object.goal.name);
+  writer.writeBool(offsets[29], object.goesGym);
+  writer.writeLong(offsets[30], object.gymMinutesPerSession);
+  writer.writeDateTime(offsets[31], object.gymStartDate);
   writer.writeStringList(
-      offsets[30], object.healthFlags.map((e) => e.name).toList());
-  writer.writeDouble(offsets[31], object.heightCm);
-  writer.writeBool(offsets[32], object.multivitamin);
-  writer.writeString(offsets[33], object.otherSupplementsNote);
-  writer.writeLong(offsets[34], object.proteinOverride);
-  writer.writeLong(offsets[35], object.proteinScoopsPerDay);
-  writer.writeLong(offsets[36], object.proteinTargetG);
-  writer.writeLongList(offsets[37], object.restDays);
-  writer.writeDouble(offsets[38], object.runningKmPerWeek);
-  writer.writeLong(offsets[39], object.sleepTimeMin);
-  writer.writeDouble(offsets[40], object.tdee);
-  writer.writeLong(offsets[41], object.trainingDaysPerWeek);
-  writer.writeDateTime(offsets[42], object.updatedAt);
-  writer.writeLong(offsets[43], object.wakeTimeMin);
-  writer.writeDouble(offsets[44], object.walkingKmPerDay);
-  writer.writeLong(offsets[45], object.waterOverride);
-  writer.writeLong(offsets[46], object.waterTargetMl);
-  writer.writeString(offsets[47], object.weighInCadence.name);
-  writer.writeLong(offsets[48], object.weighInWeekday);
-  writer.writeDouble(offsets[49], object.weightKg);
+      offsets[32], object.healthFlags.map((e) => e.name).toList());
+  writer.writeDouble(offsets[33], object.heightCm);
+  writer.writeBool(offsets[34], object.multivitamin);
+  writer.writeString(offsets[35], object.otherSupplementsNote);
+  writer.writeLong(offsets[36], object.proteinOverride);
+  writer.writeLong(offsets[37], object.proteinScoopsPerDay);
+  writer.writeLong(offsets[38], object.proteinTargetG);
+  writer.writeLongList(offsets[39], object.restDays);
+  writer.writeDouble(offsets[40], object.runningKmPerWeek);
+  writer.writeLong(offsets[41], object.sleepTimeMin);
+  writer.writeDouble(offsets[42], object.tdee);
+  writer.writeLong(offsets[43], object.trainingDaysPerWeek);
+  writer.writeDateTime(offsets[44], object.updatedAt);
+  writer.writeLong(offsets[45], object.wakeTimeMin);
+  writer.writeDouble(offsets[46], object.walkingKmPerDay);
+  writer.writeLong(offsets[47], object.waterOverride);
+  writer.writeLong(offsets[48], object.waterTargetMl);
+  writer.writeString(offsets[49], object.weighInCadence.name);
+  writer.writeLong(offsets[50], object.weighInWeekday);
+  writer.writeDouble(offsets[51], object.weightKg);
 }
 
 Profile _profileDeserialize(
@@ -392,53 +407,57 @@ Profile _profileDeserialize(
   object.carbOverride = reader.readLongOrNull(offsets[8]);
   object.carbTargetG = reader.readLong(offsets[9]);
   object.cardioSessionsPerWeek = reader.readLong(offsets[10]);
-  object.createdAt = reader.readDateTime(offsets[11]);
-  object.creatineGramsPerDay = reader.readLong(offsets[12]);
+  object.country = reader.readString(offsets[11]);
+  object.createdAt = reader.readDateTime(offsets[12]);
+  object.creatineGramsPerDay = reader.readLong(offsets[13]);
   object.cyclePhase =
-      _ProfilecyclePhaseValueEnumMap[reader.readStringOrNull(offsets[13])] ??
+      _ProfilecyclePhaseValueEnumMap[reader.readStringOrNull(offsets[14])] ??
           CyclePhase.unknown;
-  object.displayName = reader.readString(offsets[14]);
-  object.fatOverride = reader.readLongOrNull(offsets[21]);
-  object.fatTargetG = reader.readLong(offsets[22]);
-  object.fiberOverride = reader.readLongOrNull(offsets[23]);
-  object.fiberTargetG = reader.readLong(offsets[24]);
+  object.dietPreference = _ProfiledietPreferenceValueEnumMap[
+          reader.readStringOrNull(offsets[15])] ??
+      DietPreference.omnivore;
+  object.displayName = reader.readString(offsets[16]);
+  object.fatOverride = reader.readLongOrNull(offsets[23]);
+  object.fatTargetG = reader.readLong(offsets[24]);
+  object.fiberOverride = reader.readLongOrNull(offsets[25]);
+  object.fiberTargetG = reader.readLong(offsets[26]);
   object.gender =
-      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[25])] ??
+      _ProfilegenderValueEnumMap[reader.readStringOrNull(offsets[27])] ??
           Gender.male;
   object.goal =
-      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[26])] ??
+      _ProfilegoalValueEnumMap[reader.readStringOrNull(offsets[28])] ??
           FitnessGoal.buildMuscle;
-  object.goesGym = reader.readBool(offsets[27]);
-  object.gymMinutesPerSession = reader.readLong(offsets[28]);
-  object.gymStartDate = reader.readDateTimeOrNull(offsets[29]);
+  object.goesGym = reader.readBool(offsets[29]);
+  object.gymMinutesPerSession = reader.readLong(offsets[30]);
+  object.gymStartDate = reader.readDateTimeOrNull(offsets[31]);
   object.healthFlags = reader
-          .readStringList(offsets[30])
+          .readStringList(offsets[32])
           ?.map(
               (e) => _ProfilehealthFlagsValueEnumMap[e] ?? HealthFlag.pregnant)
           .toList() ??
       [];
-  object.heightCm = reader.readDouble(offsets[31]);
+  object.heightCm = reader.readDouble(offsets[33]);
   object.id = id;
-  object.multivitamin = reader.readBool(offsets[32]);
-  object.otherSupplementsNote = reader.readString(offsets[33]);
-  object.proteinOverride = reader.readLongOrNull(offsets[34]);
-  object.proteinScoopsPerDay = reader.readLong(offsets[35]);
-  object.proteinTargetG = reader.readLong(offsets[36]);
-  object.restDays = reader.readLongList(offsets[37]) ?? [];
-  object.runningKmPerWeek = reader.readDouble(offsets[38]);
-  object.sleepTimeMin = reader.readLong(offsets[39]);
-  object.tdee = reader.readDouble(offsets[40]);
-  object.trainingDaysPerWeek = reader.readLong(offsets[41]);
-  object.updatedAt = reader.readDateTime(offsets[42]);
-  object.wakeTimeMin = reader.readLong(offsets[43]);
-  object.walkingKmPerDay = reader.readDouble(offsets[44]);
-  object.waterOverride = reader.readLongOrNull(offsets[45]);
-  object.waterTargetMl = reader.readLong(offsets[46]);
+  object.multivitamin = reader.readBool(offsets[34]);
+  object.otherSupplementsNote = reader.readString(offsets[35]);
+  object.proteinOverride = reader.readLongOrNull(offsets[36]);
+  object.proteinScoopsPerDay = reader.readLong(offsets[37]);
+  object.proteinTargetG = reader.readLong(offsets[38]);
+  object.restDays = reader.readLongList(offsets[39]) ?? [];
+  object.runningKmPerWeek = reader.readDouble(offsets[40]);
+  object.sleepTimeMin = reader.readLong(offsets[41]);
+  object.tdee = reader.readDouble(offsets[42]);
+  object.trainingDaysPerWeek = reader.readLong(offsets[43]);
+  object.updatedAt = reader.readDateTime(offsets[44]);
+  object.wakeTimeMin = reader.readLong(offsets[45]);
+  object.walkingKmPerDay = reader.readDouble(offsets[46]);
+  object.waterOverride = reader.readLongOrNull(offsets[47]);
+  object.waterTargetMl = reader.readLong(offsets[48]);
   object.weighInCadence = _ProfileweighInCadenceValueEnumMap[
-          reader.readStringOrNull(offsets[47])] ??
+          reader.readStringOrNull(offsets[49])] ??
       WeighInCadence.daily;
-  object.weighInWeekday = reader.readLongOrNull(offsets[48]);
-  object.weightKg = reader.readDouble(offsets[49]);
+  object.weighInWeekday = reader.readLongOrNull(offsets[50]);
+  object.weightKg = reader.readDouble(offsets[51]);
   return object;
 }
 
@@ -474,18 +493,20 @@ P _profileDeserializeProp<P>(
     case 10:
       return (reader.readLong(offset)) as P;
     case 11:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 12:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 13:
+      return (reader.readLong(offset)) as P;
+    case 14:
       return (_ProfilecyclePhaseValueEnumMap[reader.readStringOrNull(offset)] ??
           CyclePhase.unknown) as P;
-    case 14:
-      return (reader.readString(offset)) as P;
     case 15:
-      return (reader.readLong(offset)) as P;
+      return (_ProfiledietPreferenceValueEnumMap[
+              reader.readStringOrNull(offset)] ??
+          DietPreference.omnivore) as P;
     case 16:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 17:
       return (reader.readLong(offset)) as P;
     case 18:
@@ -495,7 +516,7 @@ P _profileDeserializeProp<P>(
     case 20:
       return (reader.readLong(offset)) as P;
     case 21:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 22:
       return (reader.readLong(offset)) as P;
     case 23:
@@ -503,63 +524,67 @@ P _profileDeserializeProp<P>(
     case 24:
       return (reader.readLong(offset)) as P;
     case 25:
+      return (reader.readLongOrNull(offset)) as P;
+    case 26:
+      return (reader.readLong(offset)) as P;
+    case 27:
       return (_ProfilegenderValueEnumMap[reader.readStringOrNull(offset)] ??
           Gender.male) as P;
-    case 26:
+    case 28:
       return (_ProfilegoalValueEnumMap[reader.readStringOrNull(offset)] ??
           FitnessGoal.buildMuscle) as P;
-    case 27:
-      return (reader.readBool(offset)) as P;
-    case 28:
-      return (reader.readLong(offset)) as P;
     case 29:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 30:
+      return (reader.readLong(offset)) as P;
+    case 31:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 32:
       return (reader
               .readStringList(offset)
               ?.map((e) =>
                   _ProfilehealthFlagsValueEnumMap[e] ?? HealthFlag.pregnant)
               .toList() ??
           []) as P;
-    case 31:
-      return (reader.readDouble(offset)) as P;
-    case 32:
-      return (reader.readBool(offset)) as P;
     case 33:
-      return (reader.readString(offset)) as P;
-    case 34:
-      return (reader.readLongOrNull(offset)) as P;
-    case 35:
-      return (reader.readLong(offset)) as P;
-    case 36:
-      return (reader.readLong(offset)) as P;
-    case 37:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 38:
       return (reader.readDouble(offset)) as P;
-    case 39:
+    case 34:
+      return (reader.readBool(offset)) as P;
+    case 35:
+      return (reader.readString(offset)) as P;
+    case 36:
+      return (reader.readLongOrNull(offset)) as P;
+    case 37:
       return (reader.readLong(offset)) as P;
+    case 38:
+      return (reader.readLong(offset)) as P;
+    case 39:
+      return (reader.readLongList(offset) ?? []) as P;
     case 40:
       return (reader.readDouble(offset)) as P;
     case 41:
       return (reader.readLong(offset)) as P;
     case 42:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 43:
       return (reader.readLong(offset)) as P;
     case 44:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 45:
-      return (reader.readLongOrNull(offset)) as P;
-    case 46:
       return (reader.readLong(offset)) as P;
+    case 46:
+      return (reader.readDouble(offset)) as P;
     case 47:
+      return (reader.readLongOrNull(offset)) as P;
+    case 48:
+      return (reader.readLong(offset)) as P;
+    case 49:
       return (_ProfileweighInCadenceValueEnumMap[
               reader.readStringOrNull(offset)] ??
           WeighInCadence.daily) as P;
-    case 48:
+    case 50:
       return (reader.readLongOrNull(offset)) as P;
-    case 49:
+    case 51:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -593,6 +618,26 @@ const _ProfilecyclePhaseValueEnumMap = {
   r'follicular': CyclePhase.follicular,
   r'ovulation': CyclePhase.ovulation,
   r'luteal': CyclePhase.luteal,
+};
+const _ProfiledietPreferenceEnumValueMap = {
+  r'omnivore': r'omnivore',
+  r'vegetarian': r'vegetarian',
+  r'vegan': r'vegan',
+  r'pescatarian': r'pescatarian',
+  r'keto': r'keto',
+  r'halal': r'halal',
+  r'kosher': r'kosher',
+  r'jain': r'jain',
+};
+const _ProfiledietPreferenceValueEnumMap = {
+  r'omnivore': DietPreference.omnivore,
+  r'vegetarian': DietPreference.vegetarian,
+  r'vegan': DietPreference.vegan,
+  r'pescatarian': DietPreference.pescatarian,
+  r'keto': DietPreference.keto,
+  r'halal': DietPreference.halal,
+  r'kosher': DietPreference.kosher,
+  r'jain': DietPreference.jain,
 };
 const _ProfilegenderEnumValueMap = {
   r'male': r'male',
@@ -1563,6 +1608,136 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'country',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'country',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'country',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'country',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> countryIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'country',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition> createdAtEqualTo(
       DateTime value) {
     return QueryBuilder.apply(this, (query) {
@@ -1797,6 +1972,140 @@ extension ProfileQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'cyclePhase',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceEqualTo(
+    DietPreference value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      dietPreferenceGreaterThan(
+    DietPreference value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceLessThan(
+    DietPreference value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceBetween(
+    DietPreference lower,
+    DietPreference upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'dietPreference',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      dietPreferenceStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'dietPreference',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> dietPreferenceMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'dietPreference',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      dietPreferenceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dietPreference',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      dietPreferenceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'dietPreference',
         value: '',
       ));
     });
@@ -4653,6 +4962,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByCountry() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'country', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByCountryDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'country', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -4686,6 +5007,18 @@ extension ProfileQuerySortBy on QueryBuilder<Profile, Profile, QSortBy> {
   QueryBuilder<Profile, Profile, QAfterSortBy> sortByCyclePhaseDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cyclePhase', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByDietPreference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dietPreference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> sortByDietPreferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dietPreference', Sort.desc);
     });
   }
 
@@ -5239,6 +5572,18 @@ extension ProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByCountry() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'country', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByCountryDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'country', Sort.desc);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -5272,6 +5617,18 @@ extension ProfileQuerySortThenBy
   QueryBuilder<Profile, Profile, QAfterSortBy> thenByCyclePhaseDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'cyclePhase', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByDietPreference() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dietPreference', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterSortBy> thenByDietPreferenceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'dietPreference', Sort.desc);
     });
   }
 
@@ -5774,6 +6131,13 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctByCountry(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'country', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -5790,6 +6154,14 @@ extension ProfileQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'cyclePhase', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByDietPreference(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'dietPreference',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -6092,6 +6464,12 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, String, QQueryOperations> countryProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'country');
+    });
+  }
+
   QueryBuilder<Profile, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
@@ -6107,6 +6485,13 @@ extension ProfileQueryProperty
   QueryBuilder<Profile, CyclePhase, QQueryOperations> cyclePhaseProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'cyclePhase');
+    });
+  }
+
+  QueryBuilder<Profile, DietPreference, QQueryOperations>
+      dietPreferenceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dietPreference');
     });
   }
 

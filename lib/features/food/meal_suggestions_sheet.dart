@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/enums.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/nutrition_repo.dart';
 import '../../services/ai/ai_service.dart';
@@ -62,11 +63,13 @@ class _MealSuggestionsSheetState
       final pLeft = (p.effectiveProteinTarget - t.proteinG).clamp(0, 999);
       final cLeft = (p.effectiveCarbTarget - t.carbsG).clamp(0, 999);
       final fLeft = (p.effectiveFatTarget - t.fatG).clamp(0, 999);
+      final cuisine = _cuisineHintFromProfile(p);
       final list = await ref.read(aiServiceProvider).suggestMeals(
             caloriesRemaining: calLeft,
             proteinGRemaining: pLeft,
             carbsGRemaining: cLeft,
             fatGRemaining: fLeft,
+            cuisineHint: cuisine,
           );
       if (!mounted) return;
       setState(() {
@@ -79,6 +82,79 @@ class _MealSuggestionsSheetState
         _error = e is AiException ? e.message : 'Could not load suggestions.';
         _loading = false;
       });
+    }
+  }
+
+  /// Compose a free-text cuisine hint from country + diet preference.
+  /// Returns null when neither is set so the AI can fall back to its
+  /// generic suggestions instead of being pinned to a non-existent
+  /// region. Examples:
+  ///   - "Nepali, vegetarian"
+  ///   - "Indian, vegan"
+  ///   - "vegan" (no country)
+  String? _cuisineHintFromProfile(Profile p) {
+    final parts = <String>[];
+    final countryName = _countryLabel(p.country);
+    if (countryName != null) parts.add(countryName);
+    if (p.dietPreference != DietPreference.omnivore) {
+      parts.add(p.dietPreference.name);
+    }
+    if (parts.isEmpty) return null;
+    return parts.join(', ');
+  }
+
+  String? _countryLabel(String code) {
+    switch (code.toUpperCase()) {
+      case 'NP':
+        return 'Nepali';
+      case 'IN':
+        return 'Indian';
+      case 'BD':
+        return 'Bangladeshi';
+      case 'PK':
+        return 'Pakistani';
+      case 'LK':
+        return 'Sri Lankan';
+      case 'CN':
+        return 'Chinese';
+      case 'JP':
+        return 'Japanese';
+      case 'KR':
+        return 'Korean';
+      case 'TH':
+        return 'Thai';
+      case 'VN':
+        return 'Vietnamese';
+      case 'ID':
+        return 'Indonesian';
+      case 'PH':
+        return 'Filipino';
+      case 'MY':
+        return 'Malaysian';
+      case 'SG':
+        return 'Singaporean';
+      case 'TR':
+        return 'Turkish';
+      case 'IT':
+        return 'Italian';
+      case 'FR':
+        return 'French';
+      case 'DE':
+        return 'German';
+      case 'MX':
+        return 'Mexican';
+      case 'BR':
+        return 'Brazilian';
+      case 'US':
+        return 'American';
+      case 'UK':
+        return 'British';
+      case 'CA':
+        return 'Canadian';
+      case 'AU':
+        return 'Australian';
+      default:
+        return null;
     }
   }
 

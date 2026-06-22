@@ -57,6 +57,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   int? _weighInWeekday;
   bool _goesGym = true;
   CyclePhase _cyclePhase = CyclePhase.unknown;
+  String _country = '';
+  DietPreference _dietPreference = DietPreference.omnivore;
 
   late TextEditingController _calOverride;
   late TextEditingController _proteinOverride;
@@ -140,6 +142,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     _gymStartDate = p.gymStartDate;
     _goesGym = p.goesGym;
     _cyclePhase = p.cyclePhase;
+    _country = p.country;
+    _dietPreference = p.dietPreference;
     _bodyFatPct = p.bodyFatPct;
     _healthFlags = List.of(p.healthFlags);
     _restDays = List.of(p.restDays);
@@ -313,6 +317,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..weighInWeekday = _weighInWeekday
         ..goesGym = _goesGym
         ..cyclePhase = _cyclePhase
+        ..country = _country
+        ..dietPreference = _dietPreference
         ..bmr = t.bmr
         ..tdee = t.tdee
         ..calorieTarget = t.calorieTarget
@@ -413,7 +419,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Row(
+                  Row(
                         children: [
                           Expanded(
                             child: _Field(
@@ -433,6 +439,25 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text('COUNTRY', style: AppText.label),
+                      const SizedBox(height: 6),
+                      Text(
+                          'So the coach suggests dal-bhat in Nepal, not chicken Caesar salad.',
+                          style: AppText.meta.copyWith(fontSize: 11)),
+                      const SizedBox(height: 8),
+                      _CountryPickerEdit(
+                        value: _country,
+                        onChanged: (c) => setState(() => _country = c),
+                      ),
+                      const SizedBox(height: 14),
+                      Text('DIET', style: AppText.label),
+                      const SizedBox(height: 8),
+                      _DietPickerEdit(
+                        value: _dietPreference,
+                        onChanged: (d) =>
+                            setState(() => _dietPreference = d),
                       ),
                     ],
                   ),
@@ -1376,6 +1401,275 @@ class _GymExperienceField extends StatelessWidget {
                       : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
+                )),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+/// Country list mirrors the onboarding flow's _commonCountries. Kept
+/// here to avoid cross-package imports; if this list grows beyond ~30
+/// entries, move it into a shared widget.
+const List<(String, String)> _editCountries = [
+  ('NP', 'Nepal'),
+  ('IN', 'India'),
+  ('BD', 'Bangladesh'),
+  ('PK', 'Pakistan'),
+  ('LK', 'Sri Lanka'),
+  ('AU', 'Australia'),
+  ('BR', 'Brazil'),
+  ('CA', 'Canada'),
+  ('CN', 'China'),
+  ('DE', 'Germany'),
+  ('FR', 'France'),
+  ('ID', 'Indonesia'),
+  ('IT', 'Italy'),
+  ('JP', 'Japan'),
+  ('KR', 'South Korea'),
+  ('MX', 'Mexico'),
+  ('MY', 'Malaysia'),
+  ('PH', 'Philippines'),
+  ('SG', 'Singapore'),
+  ('TH', 'Thailand'),
+  ('TR', 'Turkey'),
+  ('UK', 'United Kingdom'),
+  ('US', 'United States'),
+  ('VN', 'Vietnam'),
+];
+
+class _CountryPickerEdit extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _CountryPickerEdit(
+      {required this.value, required this.onChanged});
+
+  String _label() {
+    if (value.isEmpty) return 'Pick a country';
+    final m = _editCountries.where((c) => c.$1 == value).toList();
+    return m.isEmpty ? value : m.first.$2;
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (_) => _CountryEditSheet(initial: value),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final set = value.isNotEmpty;
+    return GestureDetector(
+      onTap: () => _open(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: set ? AppColors.accent : AppColors.stroke),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.public_rounded,
+                size: 16,
+                color: set ? AppColors.accent : AppColors.textTertiary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(_label(),
+                  style: AppText.body.copyWith(
+                      color: set
+                          ? AppColors.textPrimary
+                          : AppColors.textTertiary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5)),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                size: 16, color: AppColors.textTertiary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CountryEditSheet extends StatefulWidget {
+  final String initial;
+  const _CountryEditSheet({required this.initial});
+
+  @override
+  State<_CountryEditSheet> createState() => _CountryEditSheetState();
+}
+
+class _CountryEditSheetState extends State<_CountryEditSheet> {
+  late final TextEditingController _q;
+  @override
+  void initState() {
+    super.initState();
+    _q = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _q.dispose();
+    super.dispose();
+  }
+
+  List<(String, String)> _filtered() {
+    final q = _q.text.trim().toLowerCase();
+    if (q.isEmpty) return _editCountries;
+    return _editCountries
+        .where((c) =>
+            c.$2.toLowerCase().contains(q) || c.$1.toLowerCase() == q)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pad = MediaQuery.of(context).viewInsets.bottom;
+    final list = _filtered();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + pad),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Text('Country', style: AppText.sectionTitle),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextField(
+              controller: _q,
+              cursorColor: AppColors.accent,
+              onChanged: (_) => setState(() {}),
+              style: AppText.body.copyWith(fontSize: 14),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 14),
+                hintText: 'Search…',
+                hintStyle: AppText.body.copyWith(
+                    color: AppColors.textTertiary, fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.of(context).size.height * 0.55),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: list.length,
+              itemBuilder: (_, i) {
+                final c = list[i];
+                final selected = c.$1 == widget.initial;
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).pop(c.$1),
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          alignment: Alignment.center,
+                          child: Text(c.$1,
+                              style: AppText.label.copyWith(
+                                  color: AppColors.textTertiary,
+                                  fontSize: 11)),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(c.$2,
+                              style: AppText.body.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14)),
+                        ),
+                        if (selected)
+                          Icon(Icons.check_rounded,
+                              size: 18, color: AppColors.accent),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DietPickerEdit extends StatelessWidget {
+  final DietPreference value;
+  final ValueChanged<DietPreference> onChanged;
+  const _DietPickerEdit({required this.value, required this.onChanged});
+
+  static const _options = <(DietPreference, String)>[
+    (DietPreference.omnivore, 'Omnivore'),
+    (DietPreference.vegetarian, 'Vegetarian'),
+    (DietPreference.vegan, 'Vegan'),
+    (DietPreference.pescatarian, 'Pescatarian'),
+    (DietPreference.keto, 'Keto'),
+    (DietPreference.halal, 'Halal'),
+    (DietPreference.kosher, 'Kosher'),
+    (DietPreference.jain, 'Jain'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _options.map((o) {
+        final on = o.$1 == value;
+        return GestureDetector(
+          onTap: () => onChanged(o.$1),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: on
+                  ? AppColors.accent.withValues(alpha: 0.18)
+                  : AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: on ? AppColors.accent : AppColors.stroke,
+                width: on ? 1.5 : 1,
+              ),
+            ),
+            child: Text(o.$2,
+                style: TextStyle(
+                  color: on ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
                 )),
           ),
         );

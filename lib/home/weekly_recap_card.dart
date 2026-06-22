@@ -103,6 +103,8 @@ class _WeeklyRecapCardState extends ConsumerState<WeeklyRecapCard> {
 
     final lines = <String>[
       'Goal: ${profile.goal.name}',
+      if (profile.country.isNotEmpty) 'Country: ${profile.country}',
+      'Diet: ${profile.dietPreference.name}',
       'Body focus: ${profile.bodyFocusNotes.isEmpty ? "none" : profile.bodyFocusNotes}',
       'Daily calorie target: $target kcal (protein ${profile.effectiveProteinTarget}g)',
       '',

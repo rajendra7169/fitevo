@@ -264,6 +264,14 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
   String _accumulated = '';
   int _clarifyRound = 0;
 
+  // Coach chat state. When the user asks a question ("what should
+  // I eat?", "I'm hungry") we route to coachChat instead of the
+  // food logger and stay in coach mode for follow-ups until they
+  // close the panel.
+  bool _coachMode = false;
+  String? _coachReply;
+  List<CoachMessage> _coachHistory = [];
+
   @override
   void initState() {
     super.initState();
@@ -327,6 +335,13 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
   Future<void> _submit() async {
     final text = _ctl.text.trim();
     if (text.isEmpty || _submitting) return;
+    // Coach intent — either we're already in a coach conversation, or
+    // the user just asked a question ("what should I eat?", "I'm
+    // hungry"). Route to the coach instead of trying to log it.
+    if (_coachMode || _isCoachIntent(text)) {
+      await _runCoach(text);
+      return;
+    }
     setState(() => _submitting = true);
     try {
       // Build the prompt: if we're in a clarification round, append the
@@ -353,7 +368,7 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
       }
 
       // Either it logged, or we hit the cap (treat as terminal).
-      _resetClarificationState();
+      _resetInlineState();
       _ctl.clear();
       _focus.unfocus();
       if (result.entries.isEmpty) {
@@ -372,15 +387,111 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     }
   }
 
-  void _resetClarificationState() {
+  /// Heuristic: does this look like a question for the coach rather
+  /// than a food-log entry? Question marks are the strongest signal;
+  /// common starters and a few keywords cover the rest.
+  bool _isCoachIntent(String text) {
+    final t = text.toLowerCase().trim();
+    if (t.contains('?')) return true;
+    const starters = [
+      'what', 'should', 'how', 'why', 'when', 'where', 'which',
+      'can you', 'tell me', 'help', 'suggest', 'recommend', 'give me',
+      'advice', 'advise', 'show me', 'is it', 'do i',
+    ];
+    for (final s in starters) {
+      if (t == s || t.startsWith('$s ')) return true;
+    }
+    const keywords = [
+      'hungry', 'what to eat', 'what should i', 'help me',
+      'any idea', 'craving',
+    ];
+    for (final k in keywords) {
+      if (t.contains(k)) return true;
+    }
+    return false;
+  }
+
+  Future<void> _runCoach(String text) async {
+    setState(() => _submitting = true);
+    try {
+      final profile = ref.read(profileStreamProvider).valueOrNull;
+      final totals = ref.read(todayTotalsProvider);
+      if (profile == null) {
+        _toast('Still loading your profile — try again in a moment.');
+        return;
+      }
+      final userContext = _buildCoachContext(profile, totals);
+      // Send history as it stood BEFORE this turn, plus the new
+      // message as latestUserMessage — matches the coach_page.dart
+      // contract.
+      final reply = await ref.read(aiServiceProvider).coachChat(
+            userContext: userContext,
+            history: List<CoachMessage>.from(_coachHistory),
+            latestUserMessage: text,
+          );
+      if (!mounted) return;
+      setState(() {
+        _coachMode = true;
+        _coachReply = reply;
+        _coachHistory = [
+          ..._coachHistory,
+          CoachMessage(
+              fromUser: true, text: text, timestamp: DateTime.now()),
+          CoachMessage(
+              fromUser: false, text: reply, timestamp: DateTime.now()),
+        ];
+        // Clarification path is mutually exclusive with coach.
+        _pendingQuestion = null;
+        _accumulated = '';
+        _clarifyRound = 0;
+        _ctl.clear();
+      });
+      _focus.requestFocus();
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is AiException ? e.message : 'Coach request failed.';
+      _toast(msg);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  String _buildCoachContext(Profile profile, DailyTotals totals) {
+    final calLeft =
+        (profile.effectiveCalorieTarget - totals.calories).clamp(0, 99999);
+    final proteinLeft =
+        (profile.effectiveProteinTarget - totals.proteinG).clamp(0, 99999);
+    final carbLeft =
+        (profile.effectiveCarbTarget - totals.carbsG).clamp(0, 99999);
+    final fatLeft = (profile.effectiveFatTarget - totals.fatG).clamp(0, 99999);
+    return [
+      'Name: ${profile.displayName.isEmpty ? "user" : profile.displayName}',
+      'Goal: ${profile.goal.name}',
+      if (profile.country.isNotEmpty) 'Country: ${profile.country}',
+      'Diet: ${profile.dietPreference.name}',
+      'Daily targets: ${profile.effectiveCalorieTarget} kcal · '
+          '${profile.effectiveProteinTarget}g P · '
+          '${profile.effectiveCarbTarget}g C · '
+          '${profile.effectiveFatTarget}g F',
+      'Today consumed: ${totals.calories} kcal · '
+          '${totals.proteinG}g P · ${totals.carbsG}g C · ${totals.fatG}g F',
+      'Remaining today: $calLeft kcal · ${proteinLeft}g P · '
+          '${carbLeft}g C · ${fatLeft}g F',
+    ].join('\n');
+  }
+
+  void _resetInlineState() {
     _pendingQuestion = null;
     _accumulated = '';
     _clarifyRound = 0;
+    _coachMode = false;
+    _coachReply = null;
+    _coachHistory = [];
   }
 
   void _cancelClarification() {
     setState(() {
-      _resetClarificationState();
+      _resetInlineState();
       _ctl.clear();
     });
     _focus.unfocus();
@@ -492,6 +603,8 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     final showSubmit = hasText || _focus.hasFocus;
 
     final hasClarify = _pendingQuestion != null;
+    final hasCoach = _coachReply != null;
+    final hasInline = hasClarify || hasCoach;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,12 +620,12 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: hasClarify
+              color: hasInline
                   ? AppColors.accent.withValues(alpha: 0.45)
                   : _focus.hasFocus
                       ? AppColors.accent
                       : AppColors.stroke,
-              width: hasClarify || _focus.hasFocus ? 1.5 : 1,
+              width: hasInline || _focus.hasFocus ? 1.5 : 1,
             ),
           ),
           // When a clarification is pending, the container grows into a
@@ -526,7 +639,7 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (hasClarify) ...[
+                if (hasInline) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 14, 12, 12),
                     child: Row(
@@ -540,9 +653,11 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _clarifyRound > 1
-                                    ? 'AI NEEDS A DETAIL · ROUND $_clarifyRound'
-                                    : 'AI NEEDS A DETAIL',
+                                hasCoach
+                                    ? 'COACH'
+                                    : (_clarifyRound > 1
+                                        ? 'AI NEEDS A DETAIL · ROUND $_clarifyRound'
+                                        : 'AI NEEDS A DETAIL'),
                                 style: AppText.label.copyWith(
                                   color: AppColors.accent,
                                   fontSize: 10,
@@ -551,7 +666,7 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _pendingQuestion!,
+                                hasCoach ? _coachReply! : _pendingQuestion!,
                                 style: AppText.body.copyWith(
                                   color: AppColors.textPrimary,
                                   fontSize: 14,
@@ -585,7 +700,7 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (!hasClarify) ...[
+                      if (!hasInline) ...[
                         Padding(
                           padding: const EdgeInsets.only(top: 12, bottom: 12),
                           child: Icon(Icons.auto_awesome_rounded,
@@ -612,9 +727,11 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                     isCollapsed: true,
                     contentPadding:
                         const EdgeInsets.symmetric(vertical: 14),
-                    hintText: _pendingQuestion == null
-                        ? 'What did you eat?'
-                        : 'Answer above…',
+                    hintText: hasCoach
+                        ? 'Reply or ask anything…'
+                        : (_pendingQuestion == null
+                            ? 'What did you eat?'
+                            : 'Answer above…'),
                     hintStyle: AppText.body.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 15,

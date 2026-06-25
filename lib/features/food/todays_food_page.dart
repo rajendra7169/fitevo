@@ -1032,7 +1032,12 @@ class _SwipeToDelete extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(nutritionRepoProvider);
     final key = ValueKey('meal-${entries.map((e) => e.id).join('-')}');
-    return Dismissible(
+    // ClipRRect with the same radius as the card so the swipe-reveal
+    // background gets clipped to the card's exact shape — no gap, no
+    // mismatched corner radii showing through.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Dismissible(
       key: key,
       direction: DismissDirection.endToStart,
       onDismissed: (_) async {
@@ -1073,10 +1078,10 @@ class _SwipeToDelete extends ConsumerWidget {
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: AppColors.danger.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(20),
-        ),
+        // No borderRadius here — the outer ClipRRect handles the
+        // corners. Lets the red fill extend edge-to-edge under the
+        // card with no visible gap.
+        color: AppColors.danger.withValues(alpha: 0.18),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1093,6 +1098,7 @@ class _SwipeToDelete extends ConsumerWidget {
         ),
       ),
       child: child,
+      ),
     );
   }
 

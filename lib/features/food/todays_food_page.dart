@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -50,7 +51,10 @@ class TodaysFoodPage extends ConsumerWidget {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                     sliver: SliverList.list(children: [
-                      _SummaryCard(profile: profile, totals: totals),
+                      _SummaryCard(profile: profile, totals: totals)
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.06, end: 0),
                       const SizedBox(height: 22),
                       Row(
                         children: [
@@ -62,14 +66,21 @@ class TodaysFoodPage extends ConsumerWidget {
                                   color: AppColors.textTertiary,
                                   letterSpacing: 0.6)),
                         ],
-                      ),
+                      ).animate(delay: 120.ms).fadeIn(duration: 280.ms),
                       const SizedBox(height: 10),
                     ]),
                   ),
                   if (entries.isEmpty)
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                      sliver: SliverList.list(children: [_EmptyState()]),
+                      sliver: SliverList.list(children: [
+                        _EmptyState()
+                            .animate(delay: 160.ms)
+                            .fadeIn(duration: 350.ms)
+                            .scale(
+                                begin: const Offset(0.95, 0.95),
+                                end: const Offset(1, 1)),
+                      ]),
                     )
                   else
                     () {
@@ -82,9 +93,14 @@ class TodaysFoodPage extends ConsumerWidget {
                             final g = groups[i];
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: g.length == 1
-                                  ? _FoodEntryCard(entry: g.first)
-                                  : _MealGroupCard(entries: g),
+                              child: (g.length == 1
+                                      ? _FoodEntryCard(entry: g.first)
+                                      : _MealGroupCard(entries: g))
+                                  .animate(
+                                      delay: Duration(
+                                          milliseconds: 140 + i * 50))
+                                  .fadeIn(duration: 280.ms)
+                                  .slideY(begin: 0.06, end: 0),
                             );
                           },
                         ),

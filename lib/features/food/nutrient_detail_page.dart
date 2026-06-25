@@ -26,13 +26,6 @@ class NutrientDetailPage extends ConsumerWidget {
     final consumed = info.consumed(totals);
     final target = profile != null ? info.target(profile) : 0;
 
-    // Filter to relevant entries once so the meal-count badge matches the list.
-    final relevant = entries
-        .where((e) => nutrient.entryValue(e) > 0)
-        .toList()
-      ..sort((a, b) =>
-          nutrient.entryValue(b).compareTo(nutrient.entryValue(a)));
-
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: CustomScrollView(
@@ -41,68 +34,37 @@ class NutrientDetailPage extends ConsumerWidget {
           _NutrientSliverAppBar(nutrient: nutrient),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _RingSummary(
+                  _SummaryCard(
                     nutrient: nutrient,
                     consumed: consumed,
                     target: target,
                     unit: info.unit,
-                  )
-                      .animate()
-                      .fadeIn(duration: 360.ms)
-                      .slideY(begin: 0.06, end: 0),
-                  const SizedBox(height: 22),
+                  ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.06, end: 0),
+                  const SizedBox(height: 24),
                   if (info.description.isNotEmpty) ...[
-                    _InfoBanner(
-                      description: info.description,
-                      color: info.color,
-                      icon: info.icon,
-                    )
+                    _InfoBanner(description: info.description, color: info.color)
                         .animate(delay: 80.ms)
-                        .fadeIn(duration: 320.ms)
+                        .fadeIn(duration: 300.ms)
                         .slideY(begin: 0.06, end: 0),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 24),
                   ],
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        'FROM TODAY\'S MEALS',
-                        style: AppText.label.copyWith(
-                          color: AppColors.textTertiary,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (relevant.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: info.color.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${relevant.length}',
-                            style: AppText.label.copyWith(
-                              fontSize: 10,
-                              color: info.color,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                        ),
-                    ],
+                  Text(
+                    'FROM TODAY\'S MEALS',
+                    style: AppText.label.copyWith(
+                      color: AppColors.textTertiary,
+                      fontSize: 11,
+                    ),
                   ).animate(delay: 120.ms).fadeIn(duration: 280.ms),
                   const SizedBox(height: 12),
                 ],
               ),
             ),
           ),
-          _EntriesList(
-              entries: relevant, nutrient: nutrient, consumed: consumed),
+          _EntriesList(entries: entries, nutrient: nutrient, consumed: consumed),
           const SliverToBoxAdapter(child: SizedBox(height: 48)),
         ],
       ),
@@ -126,7 +88,7 @@ extension NutrientInfo on NutrientType {
           consumed: (t) => t.proteinG,
           target: (p) => p.effectiveProteinTarget,
           description:
-              'Builds and repairs muscle, fuels enzymes and hormones, and keeps you full longer.',
+              'Protein builds and repairs muscle, supports enzymes and hormones, and helps you feel full.',
         );
       case NutrientType.carbs:
         return NutrientMeta(
@@ -137,7 +99,7 @@ extension NutrientInfo on NutrientType {
           consumed: (t) => t.carbsG,
           target: (p) => p.effectiveCarbTarget,
           description:
-              'Your body\'s primary energy source. Fuels your brain and lights up your gym sessions.',
+              'Carbs are your body\'s primary energy source, fuelling the brain and muscles during exercise.',
         );
       case NutrientType.fat:
         return NutrientMeta(
@@ -148,7 +110,7 @@ extension NutrientInfo on NutrientType {
           consumed: (t) => t.fatG,
           target: (p) => p.effectiveFatTarget,
           description:
-              'Healthy fats support hormones, brain function, and the absorption of vitamins A, D, E, K.',
+              'Healthy fats support cell membranes, hormone production, and absorption of fat-soluble vitamins.',
         );
       case NutrientType.fiber:
         return NutrientMeta(
@@ -159,7 +121,7 @@ extension NutrientInfo on NutrientType {
           consumed: (t) => t.fiberG,
           target: (p) => p.effectiveFiberTarget,
           description:
-              'Slows digestion, steadies blood sugar, lowers cholesterol, and keeps you feeling full.',
+              'Dietary fiber aids digestion, regulates blood sugar, lowers cholesterol, and promotes satiety.',
         );
       case NutrientType.sodium:
         return NutrientMeta(
@@ -170,7 +132,7 @@ extension NutrientInfo on NutrientType {
           consumed: (t) => t.sodiumMg,
           target: (_) => 2300,
           description:
-              'Regulates fluid balance and nerve signals. The 2,300 mg ceiling is the FDA upper limit.',
+              'Sodium regulates fluid balance and nerve signals. Excess intake may raise blood pressure.',
         );
     }
   }
@@ -222,7 +184,7 @@ class _NutrientSliverAppBar extends StatelessWidget {
     final info = nutrient.info;
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 140,
+      expandedHeight: 120,
       backgroundColor: AppColors.bg,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
@@ -239,18 +201,18 @@ class _NutrientSliverAppBar extends StatelessWidget {
         ),
       ),
       flexibleSpace: FlexibleSpaceBar(
-        titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+        titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         title: Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 30,
+              height: 30,
               decoration: BoxDecoration(
-                color: info.color.withValues(alpha: 0.20),
-                borderRadius: BorderRadius.circular(10),
+                color: info.color.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(9),
               ),
-              child: Icon(info.icon, size: 18, color: info.color),
+              child: Icon(info.icon, size: 16, color: info.color),
             ),
             const SizedBox(width: 10),
             Text(
@@ -259,57 +221,32 @@ class _NutrientSliverAppBar extends StatelessWidget {
             ),
           ],
         ),
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Vertical gradient — stronger at top, fades into bg
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    info.color.withValues(alpha: 0.22),
-                    info.color.withValues(alpha: 0.05),
-                    AppColors.bg,
-                  ],
-                  stops: const [0.0, 0.6, 1.0],
-                ),
-              ),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                info.color.withValues(alpha: 0.08),
+                AppColors.bg,
+              ],
             ),
-            // Soft radial highlight in upper-right for depth
-            Align(
-              alignment: const Alignment(0.85, -0.8),
-              child: Container(
-                width: 180,
-                height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      info.color.withValues(alpha: 0.18),
-                      info.color.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─── ring summary ──────────────────────────────────────────────────────────
+// ─── summary card ──────────────────────────────────────────────────────────
 
-class _RingSummary extends StatelessWidget {
+class _SummaryCard extends StatelessWidget {
   final NutrientType nutrient;
   final int consumed;
   final int target;
   final String unit;
 
-  const _RingSummary({
+  const _SummaryCard({
     required this.nutrient,
     required this.consumed,
     required this.target,
@@ -319,131 +256,159 @@ class _RingSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final info = nutrient.info;
-    final progress = target == 0 ? 0.0 : (consumed / target).clamp(0.0, 1.2);
+    final progress = target == 0 ? 0.0 : (consumed / target).clamp(0.0, 1.0);
     final remaining = math.max(0, target - consumed);
     final over = consumed > target && target > 0;
     final done = remaining == 0 && target > 0;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.stroke),
         boxShadow: [
           BoxShadow(
-            color: info.color.withValues(alpha: 0.10),
-            blurRadius: 28,
-            offset: const Offset(0, 8),
+            color: info.color.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 200,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Consumed big number
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CONSUMED',
+                    style: AppText.label.copyWith(fontSize: 10),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: consumed.toDouble()),
+                        duration: const Duration(milliseconds: 700),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, v, child) => Text(
+                          _formatValue(v.round(), unit),
+                          style: AppText.bigNumber.copyWith(
+                            fontSize: 36,
+                            color: over
+                                ? AppColors.calorieFrom
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        unit,
+                        style: AppText.meta.copyWith(
+                            fontSize: 14, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const Spacer(),
+              // Target bubble
+              if (target > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceHigh,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: AppColors.stroke),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        'TARGET',
+                        style: AppText.label.copyWith(fontSize: 9),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatValue(target, unit),
+                        style: AppText.meta.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        unit,
+                        style: AppText.meta.copyWith(
+                            fontSize: 10, color: AppColors.textTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Animated progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(30),
             child: Stack(
-              alignment: Alignment.center,
               children: [
-                // The ring itself
+                Container(height: 10, color: AppColors.surfaceHigh),
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: progress),
-                  duration: const Duration(milliseconds: 900),
+                  duration: const Duration(milliseconds: 800),
                   curve: Curves.easeOutCubic,
-                  builder: (_, v, _) => SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: CustomPaint(
-                      painter: _RingPainter(
-                        progress: v,
-                        color: info.color,
-                        trackColor: AppColors.surfaceHigh,
+                  builder: (_, v, child) => FractionallySizedBox(
+                    widthFactor: v,
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            info.color,
+                            info.color.withValues(alpha: 0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
                   ),
                 ),
-                // Center label stack
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'CONSUMED',
-                      style: AppText.label.copyWith(
-                        fontSize: 10,
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: consumed.toDouble()),
-                          duration: const Duration(milliseconds: 800),
-                          curve: Curves.easeOutCubic,
-                          builder: (_, v, _) => Text(
-                            _formatValue(v.round(), unit),
-                            style: AppText.giantNumber.copyWith(
-                              fontSize: 44,
-                              letterSpacing: -1.4,
-                              color: over
-                                  ? AppColors.danger
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Text(
-                            unit,
-                            style: AppText.meta.copyWith(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (target > 0) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        'of ${_formatValue(target, unit)} $unit',
-                        style: AppText.meta.copyWith(
-                          fontSize: 12,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 14),
+          // Status row
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _StatusPill(
+              _StatPill(
                 label: done
-                    ? 'Goal reached'
+                    ? 'Goal reached! ✓'
                     : over
                         ? 'Over by ${_formatValue(consumed - target, unit)} $unit'
-                        : '${_formatValue(remaining, unit)} $unit to go',
+                        : '${_formatValue(remaining, unit)} $unit remaining',
                 color: done
-                    ? AppColors.success
+                    ? AppColors.protein
                     : over
-                        ? AppColors.danger
-                        : info.color,
-                icon: done
-                    ? Icons.check_rounded
-                    : over
-                        ? Icons.warning_amber_rounded
-                        : Icons.trending_flat_rounded,
+                        ? AppColors.calorieFrom
+                        : AppColors.textSecondary,
+              ),
+              const Spacer(),
+              Text(
+                '${(progress * 100).round()}%',
+                style: AppText.meta.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: info.color,
+                ),
               ),
             ],
           ),
@@ -460,111 +425,26 @@ class _RingSummary extends StatelessWidget {
   }
 }
 
-class _RingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final Color trackColor;
-
-  _RingPainter({
-    required this.progress,
-    required this.color,
-    required this.trackColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = 12.0;
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - stroke) / 2;
-
-    final track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..color = trackColor;
-    canvas.drawCircle(center, radius, track);
-
-    if (progress <= 0) return;
-    final sweep = (progress.clamp(0.0, 1.0)) * 2 * math.pi;
-    final fg = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: math.pi * 1.5,
-        colors: [
-          color.withValues(alpha: 0.7),
-          color,
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: radius));
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweep,
-      false,
-      fg,
-    );
-
-    // Overflow indicator — paint a second arc in danger color past 100%.
-    if (progress > 1.0) {
-      final overflow = ((progress - 1.0).clamp(0.0, 0.2)) * 2 * math.pi;
-      final overflowPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..color = AppColors.danger;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2,
-        overflow,
-        false,
-        overflowPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter old) =>
-      old.progress != progress ||
-      old.color != color ||
-      old.trackColor != trackColor;
-}
-
-class _StatusPill extends StatelessWidget {
+class _StatPill extends StatelessWidget {
   final String label;
   final Color color;
-  final IconData icon;
-  const _StatusPill({
-    required this.label,
-    required this.color,
-    required this.icon,
-  });
+  const _StatPill({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppText.meta.copyWith(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: AppText.meta.copyWith(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -575,35 +455,22 @@ class _StatusPill extends StatelessWidget {
 class _InfoBanner extends StatelessWidget {
   final String description;
   final Color color;
-  final IconData icon;
-  const _InfoBanner({
-    required this.description,
-    required this.color,
-    required this.icon,
-  });
+  const _InfoBanner({required this.description, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(width: 12),
+          Icon(Icons.info_outline_rounded, size: 15, color: color),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               description,
@@ -635,7 +502,14 @@ class _EntriesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (entries.isEmpty) {
+    // Only show entries that contributed to this nutrient
+    final relevant = entries
+        .where((e) => nutrient.entryValue(e) > 0)
+        .toList()
+      ..sort((a, b) =>
+          nutrient.entryValue(b).compareTo(nutrient.entryValue(a)));
+
+    if (relevant.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -647,10 +521,10 @@ class _EntriesList extends StatelessWidget {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       sliver: SliverList.separated(
-        itemCount: entries.length,
+        itemCount: relevant.length,
         separatorBuilder: (_, i) => const SizedBox(height: 10),
         itemBuilder: (ctx, i) {
-          final entry = entries[i];
+          final entry = relevant[i];
           final value = nutrient.entryValue(entry);
           return _EntryTile(
             entry: entry,
@@ -685,106 +559,113 @@ class _EntryTile extends StatelessWidget {
     final info = nutrient.info;
     final share = total == 0 ? 0.0 : (value / total).clamp(0.0, 1.0);
     final pct = (share * 100).round();
-    final isTop = index == 0;
 
     return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isTop
-              ? info.color.withValues(alpha: 0.35)
-              : AppColors.stroke,
-          width: isTop ? 1.2 : 1,
-        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.stroke, width: 1),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Vertical color stripe — bolder for top contributor
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: info.color
-                    .withValues(alpha: isTop ? 1.0 : 0.5 + (share * 0.4)),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Rank badge
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: info.color.withValues(alpha: index == 0 ? 0.22 : 0.10),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${index + 1}',
+                  style: AppText.label.copyWith(
+                    fontSize: 10,
+                    color: info.color,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.description,
-                            style: AppText.body.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              height: 1.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (entry.quantity.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '${entry.quantity}${entry.unit.isNotEmpty ? ' ${entry.unit}' : ''}',
-                              style: AppText.meta.copyWith(
-                                fontSize: 11.5,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ],
+                    Text(
+                      entry.description,
+                      style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _formatValue(value, info.unit),
-                          style: AppText.bigNumber.copyWith(
-                            fontSize: 20,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.4,
-                          ),
+                    if (entry.quantity.isNotEmpty)
+                      Text(
+                        '${entry.quantity}${entry.unit.isNotEmpty ? ' ${entry.unit}' : ''}',
+                        style: AppText.meta.copyWith(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
                         ),
-                        const SizedBox(height: 1),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: info.color.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '$pct%',
-                            style: AppText.label.copyWith(
-                              fontSize: 10,
-                              color: info.color,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
                   ],
                 ),
               ),
+              const SizedBox(width: 10),
+              // Value + percentage
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _formatValue(value, info.unit),
+                    style: AppText.bigNumber.copyWith(
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '$pct%',
+                    style: AppText.meta.copyWith(
+                      fontSize: 11,
+                      color: info.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Contribution bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              children: [
+                Container(height: 4, color: AppColors.surfaceHigh),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: share),
+                  duration: Duration(milliseconds: 500 + index * 60),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, v, _) => FractionallySizedBox(
+                    widthFactor: v,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: info.color,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     )
         .animate(delay: Duration(milliseconds: 140 + index * 50))
@@ -817,30 +698,27 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: info.color.withValues(alpha: 0.14),
+              color: info.color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(info.icon, size: 26, color: info.color),
+            child: Icon(info.icon, size: 24, color: info.color),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
-            'Nothing logged yet',
+            'No ${info.label} logged today',
             style: AppText.sectionTitle.copyWith(fontSize: 16),
           ),
           const SizedBox(height: 6),
           Text(
-            'Log a meal to see how each food contributes to your ${info.label.toLowerCase()} for today.',
+            'Log a meal to see how each food contributes to your ${info.label.toLowerCase()} intake.',
             textAlign: TextAlign.center,
             style: AppText.body.copyWith(fontSize: 13, height: 1.5),
           ),
         ],
       ),
-    )
-        .animate()
-        .fadeIn(duration: 350.ms)
-        .scale(begin: const Offset(0.96, 0.96), end: const Offset(1, 1));
+    ).animate().fadeIn(duration: 350.ms).scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1));
   }
 }

@@ -94,13 +94,18 @@ class TodaysFoodPage extends ConsumerWidget {
                             // Wrap each card in a Dismissible so the user
                             // can swipe right→left to delete an accidental
                             // entry quickly. Undo is offered via SnackBar.
+                            final isGroup = g.length > 1;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
                               child: _SwipeToDelete(
                                 entries: g,
-                                child: g.length == 1
-                                    ? _FoodEntryCard(entry: g.first)
-                                    : _MealGroupCard(entries: g),
+                                // Match each card's own corner radius so the
+                                // swipe-reveal clips exactly to the card's
+                                // shape — no sliver of red at the corners.
+                                borderRadius: isGroup ? 20 : 18,
+                                child: isGroup
+                                    ? _MealGroupCard(entries: g)
+                                    : _FoodEntryCard(entry: g.first),
                               )
                                   .animate(
                                       delay: Duration(
@@ -1026,7 +1031,12 @@ class _EmptyState extends StatelessWidget {
 class _SwipeToDelete extends ConsumerWidget {
   final List<FoodEntry> entries;
   final Widget child;
-  const _SwipeToDelete({required this.entries, required this.child});
+  final double borderRadius;
+  const _SwipeToDelete({
+    required this.entries,
+    required this.child,
+    required this.borderRadius,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1036,7 +1046,7 @@ class _SwipeToDelete extends ConsumerWidget {
     // background gets clipped to the card's exact shape — no gap, no
     // mismatched corner radii showing through.
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(borderRadius),
       child: Dismissible(
       key: key,
       direction: DismissDirection.endToStart,

@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../core/health_math.dart';
@@ -790,29 +791,38 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Sweep gradient SPANS THE ACTUAL ARC (not the full 360°) so the
-    // full saffron → mid → gold blend is visible at any progress.
-    // Adds a midpoint stop (linear blend of from/to) for an even,
-    // continuous transition with no perceived "cut" at the arc tip.
+    // Status-colored ring: green when you have room, yellow as you
+    // approach target, orange near target, red when over. The color
+    // signals "how am I doing" at a glance — much more useful than a
+    // brand-color sweep that means nothing semantically.
     final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
-    final mid =
-        Color.lerp(AppColors.calorieFrom, AppColors.calorieTo, 0.5)!;
+    final color = _statusColor(progress);
     final fg = Paint()
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + sweep,
-        colors: [
-          AppColors.calorieFrom,
-          mid,
-          AppColors.calorieTo,
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(rect)
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
     canvas.drawArc(rect, -math.pi / 2, sweep, false, fg);
+  }
+
+  /// Smoothly interpolates from leaf-green (no calories consumed) →
+  /// gold (mid) → saffron (near target) → berry-red (over target).
+  /// Pulls colors from AppColors so dark mode looks correct too.
+  static Color _statusColor(double progress) {
+    if (progress <= 0.5) {
+      return Color.lerp(
+          AppColors.success, AppColors.warning, progress * 2)!;
+    }
+    if (progress <= 0.9) {
+      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
+          (progress - 0.5) / 0.4)!;
+    }
+    if (progress <= 1.2) {
+      return Color.lerp(AppColors.calorieFrom, AppColors.danger,
+          (progress - 0.9) / 0.3)!;
+    }
+    return AppColors.danger;
   }
 
   @override
@@ -1117,17 +1127,42 @@ class _WaterChipState extends ConsumerState<_WaterChip>
         ..reset()
         ..forward();
       // Goal-crossing celebration: only fires the moment progress moves
-      // from below the target up to or past it. Subsequent sips don't
-      // re-trigger.
+      // from below the target up to or past it AND only once per day.
+      // The once-per-day check matters because totals load async — on
+      // a fresh app open with the goal already hit, the chip rebuilds
+      // from 0 → real value, which looks like a "crossing" to this
+      // logic. Without the persisted flag, the user would see the
+      // celebration every time they reopen the app.
       if (old.progress < 1.0 && widget.progress >= 1.0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _celebrate();
+          _maybeCelebrate();
         });
       }
     }
   }
 
-  void _celebrate() {
+  static String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Gated celebration trigger. Reads the last celebrated dateKey from
+  /// SharedPreferences and only fires when it differs from today's
+  /// key. This is what keeps the burst from re-firing every time the
+  /// user reopens the app on a day they already hit the goal.
+  Future<void> _maybeCelebrate() async {
+    const prefsKey = 'waterCelebratedDate';
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getString(prefsKey);
+    final today = _todayKey();
+    if (last == today) return;
+    await prefs.setString(prefsKey, today);
+    if (!mounted) return;
+    _showCelebration();
+  }
+
+  void _showCelebration() {
     final ctx = _chipKey.currentContext;
     if (ctx == null) return;
     final box = ctx.findRenderObject() as RenderBox?;

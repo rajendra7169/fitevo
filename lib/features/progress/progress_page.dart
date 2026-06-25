@@ -15,6 +15,7 @@ import '../../services/progress/streak_calc.dart';
 import '../../services/workout/pr_tracker.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import 'daily_report_page.dart';
 import 'measurement_entry_sheet.dart';
 
 class ProgressPage extends ConsumerWidget {
@@ -53,6 +54,8 @@ class ProgressPage extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                   sliver: SliverList.list(children: [
+                    _DailyReportEntry(),
+                    const SizedBox(height: 22),
                     _StreakAndBadges(
                       foods: foods,
                       sessions: sessions,
@@ -94,6 +97,67 @@ class ProgressPage extends ConsumerWidget {
 
   Future<void> _logMeasurement(BuildContext context) async {
     await MeasurementEntrySheet.show(context);
+  }
+}
+
+// ----------------------- DAILY REPORT ENTRY --------------------------------
+
+class _DailyReportEntry extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const DailyReportPage()),
+      ),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.accent.withValues(alpha: 0.18),
+              AppColors.accent.withValues(alpha: 0.06),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: AppColors.accent.withValues(alpha: 0.35), width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.accent.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(Icons.insights_rounded,
+                  color: AppColors.accent, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Daily Report',
+                      style: AppText.sectionTitle.copyWith(fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text('See food + workout rings and AI summary for any day',
+                      style: AppText.meta.copyWith(
+                          fontSize: 11, color: AppColors.textTertiary)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AppColors.textTertiary, size: 22),
+          ],
+        ),
+      ),
+    );
   }
 }
 

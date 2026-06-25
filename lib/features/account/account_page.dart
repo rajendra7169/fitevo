@@ -298,6 +298,27 @@ class _AccountPageState extends ConsumerState<AccountPage> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Auto-backup is on — changes sync within ~30 seconds.',
+                            style: AppText.meta.copyWith(
+                                fontSize: 11.5, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 14),
                     Row(
                       children: [

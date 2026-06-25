@@ -105,6 +105,10 @@ class _ProfileGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restore = ref.watch(initialSyncProvider(uid));
+    // Start background auto-backup once the user is signed in. Riverpod
+    // keeps the provider alive as long as it's watched, so backgrounding
+    // a build that observes this is the right place to anchor it.
+    ref.watch(autoBackupLifecycleProvider);
     return restore.when(
       loading: () => const _Splash(),
       error: (_, _) => const _ProfileResolver(),

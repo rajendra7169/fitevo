@@ -27,6 +27,7 @@ import '../services/workout/routine_generator.dart';
 import '../services/auth/auth_service.dart';
 import '../services/nutrition/usda_service.dart';
 import '../services/settings/app_settings.dart';
+import '../services/sync/auto_backup_service.dart';
 import '../services/sync/sync_service.dart';
 
 const String _kGeminiApiKey =
@@ -191,6 +192,32 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final syncServiceProvider = Provider<SyncService>((ref) {
   return SyncService(db: ref.watch(dbProvider));
+});
+
+/// Background auto-backup. Singleton — created once, lifecycle managed
+/// by [autoBackupLifecycleProvider] which starts/stops it as the user
+/// signs in or out.
+final autoBackupServiceProvider = Provider<AutoBackupService>((ref) {
+  final svc = AutoBackupService(
+    db: ref.watch(dbProvider),
+    sync: ref.watch(syncServiceProvider),
+  );
+  ref.onDispose(svc.stop);
+  return svc;
+});
+
+/// Watches auth state and starts/stops the auto-backup service for
+/// non-anonymous users. Wired up by an app-level ConsumerWidget so the
+/// service spins up once after Firebase finishes restoring the session.
+final autoBackupLifecycleProvider = Provider<void>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  final svc = ref.watch(autoBackupServiceProvider);
+  if (user != null && !user.isAnonymous) {
+    svc.start();
+  } else {
+    // Fire-and-forget; safe to call when not started.
+    svc.stop();
+  }
 });
 
 /// Runs once per uid on sign-in: pulls cloud → local if local is empty,

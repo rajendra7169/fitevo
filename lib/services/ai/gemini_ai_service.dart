@@ -154,6 +154,29 @@ Rules:
 - Totals MUST equal the sum of items.
 - Output JSON only. No prose, no markdown fences, no comments.
 - Only one of the two shapes — never both.
+
+UNITS AND REALISTIC RANGES (critical — do not confuse mg and g):
+- protein_g, carbs_g, fat_g, fiber_g are GRAMS. Sodium_mg is MILLIGRAMS.
+- For ONE typical food item, expect:
+    calories: 1–1500 kcal (rarely above 1000 for a single item)
+    protein_g: 0–80
+    carbs_g: 0–150
+    fat_g: 0–100
+    fiber_g: 0–30
+    sodium_mg: 0–3000
+- Macros must be physically consistent with calories.
+  Expected kcal ≈ 9*fat_g + 4*protein_g + 4*carbs_g (±20%).
+  If your fat_g implies 9000 kcal but calories says 10, something is wrong.
+
+SUPPLEMENTS / CAPSULES / PILLS — read carefully:
+- A capsule, pill, softgel, or tablet contains TINY amounts.
+- "1 capsule fish oil" → about 9 kcal, 1g fat, 0g protein, 0g carbs.
+  Omega-3 content (~300 mg) is NOT 300 g of fat.
+- "1 multivitamin tablet" → 0 kcal, 0 macros.
+- "1 protein scoop / 25 g whey" → ~100 kcal, ~22g protein, ~2g carbs, ~1g fat.
+- "1 creatine 5g" → 0 kcal, 0 macros (it is not protein).
+- Never output gram values >100 for a single capsule or pill.
+- Treat mg ↔ g conversions carefully: 1000 mg = 1 g, not 1000 g.
 ''';
 
 class GeminiAiService implements AiService {
@@ -522,18 +545,57 @@ class GeminiAiService implements AiService {
       high = _i(range['calories_high']);
     }
 
-    return FoodItemAnalysis(
-      name: (m['name'] as String?)?.trim() ?? 'food',
-      quantity: (m['quantity'] as String?)?.trim() ?? '',
+    final s = _sanitiseMacros(
       calories: _i(m['calories']) ?? _i(m['kcal']) ?? 0,
       proteinG: _i(m['protein_g']) ?? _i(m['protein']) ?? 0,
       carbsG: _i(m['carbs_g']) ?? _i(m['carbs']) ?? _i(m['carbohydrates_g']) ?? 0,
       fatG: _i(m['fat_g']) ?? _i(m['fat']) ?? _i(m['fats_g']) ?? _i(m['total_fat_g']) ?? 0,
       fiberG: _i(m['fiber_g']) ?? _i(m['fiber']) ?? _i(m['dietary_fiber_g']) ?? 0,
       sodiumMg: _i(m['sodium_mg']) ?? _i(m['sodium']) ?? 0,
+    );
+    return FoodItemAnalysis(
+      name: (m['name'] as String?)?.trim() ?? 'food',
+      quantity: (m['quantity'] as String?)?.trim() ?? '',
+      calories: s.calories,
+      proteinG: s.proteinG,
+      carbsG: s.carbsG,
+      fatG: s.fatG,
+      fiberG: s.fiberG,
+      sodiumMg: s.sodiumMg,
       confidence: conf,
       caloriesLow: low,
       caloriesHigh: high,
+    );
+  }
+
+  /// Safety net for LLM hallucinations (e.g. "1 fish-oil capsule" →
+  /// 1000g fat). Two layers: rescale macros if they imply far more
+  /// kcal than the model returned, then hard-cap each macro.
+  _SanitisedMacros _sanitiseMacros({
+    required int calories,
+    required int proteinG,
+    required int carbsG,
+    required int fatG,
+    required int fiberG,
+    required int sodiumMg,
+  }) {
+    var p = proteinG;
+    var c = carbsG;
+    var f = fatG;
+    final expectedKcal = 9 * f + 4 * p + 4 * c;
+    if (calories > 0 && expectedKcal > calories * 2.5) {
+      final scale = calories / expectedKcal;
+      p = (p * scale).round();
+      c = (c * scale).round();
+      f = (f * scale).round();
+    }
+    return _SanitisedMacros(
+      calories: calories.clamp(0, 5000),
+      proteinG: p.clamp(0, 200),
+      carbsG: c.clamp(0, 400),
+      fatG: f.clamp(0, 200),
+      fiberG: fiberG.clamp(0, 80),
+      sodiumMg: sodiumMg.clamp(0, 10000),
     );
   }
 
@@ -554,4 +616,21 @@ class GeminiAiService implements AiService {
     }
     return t.trim();
   }
+}
+
+class _SanitisedMacros {
+  final int calories;
+  final int proteinG;
+  final int carbsG;
+  final int fatG;
+  final int fiberG;
+  final int sodiumMg;
+  const _SanitisedMacros({
+    required this.calories,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatG,
+    required this.fiberG,
+    required this.sodiumMg,
+  });
 }

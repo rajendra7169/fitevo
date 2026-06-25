@@ -154,15 +154,23 @@ class ProxyAiService implements AiService {
         .whereType<Map>()
         .map((m) {
       final mm = Map<String, dynamic>.from(m);
-      return FoodItemAnalysis(
-        name: (mm['name'] as String?)?.trim() ?? 'food',
-        quantity: (mm['quantity'] as String?)?.trim() ?? '',
+      final s = _sanitiseMacros(
         calories: _i(mm['calories']) ?? 0,
         proteinG: _i(mm['protein_g']) ?? 0,
         carbsG: _i(mm['carbs_g']) ?? 0,
         fatG: _i(mm['fat_g']) ?? 0,
         fiberG: _i(mm['fiber_g']) ?? 0,
         sodiumMg: _i(mm['sodium_mg']) ?? 0,
+      );
+      return FoodItemAnalysis(
+        name: (mm['name'] as String?)?.trim() ?? 'food',
+        quantity: (mm['quantity'] as String?)?.trim() ?? '',
+        calories: s.calories,
+        proteinG: s.proteinG,
+        carbsG: s.carbsG,
+        fatG: s.fatG,
+        fiberG: s.fiberG,
+        sodiumMg: s.sodiumMg,
         confidence: _confidence(mm['confidence'] as String?),
         caloriesLow: _i((mm['range'] as Map?)?['calories_low']),
         caloriesHigh: _i((mm['range'] as Map?)?['calories_high']),
@@ -231,4 +239,52 @@ class ProxyAiService implements AiService {
     if (v is String) return int.tryParse(v) ?? double.tryParse(v)?.round();
     return null;
   }
+
+  /// Safety net for LLM unit slips (e.g. "1 capsule fish oil" → 1000 g
+  /// fat). If macros imply far more kcal than the model returned,
+  /// scale them down proportionally; then hard-cap each macro.
+  _SanitisedMacros _sanitiseMacros({
+    required int calories,
+    required int proteinG,
+    required int carbsG,
+    required int fatG,
+    required int fiberG,
+    required int sodiumMg,
+  }) {
+    var p = proteinG;
+    var c = carbsG;
+    var f = fatG;
+    final expectedKcal = 9 * f + 4 * p + 4 * c;
+    if (calories > 0 && expectedKcal > calories * 2.5) {
+      final scale = calories / expectedKcal;
+      p = (p * scale).round();
+      c = (c * scale).round();
+      f = (f * scale).round();
+    }
+    return _SanitisedMacros(
+      calories: calories.clamp(0, 5000),
+      proteinG: p.clamp(0, 200),
+      carbsG: c.clamp(0, 400),
+      fatG: f.clamp(0, 200),
+      fiberG: fiberG.clamp(0, 80),
+      sodiumMg: sodiumMg.clamp(0, 10000),
+    );
+  }
+}
+
+class _SanitisedMacros {
+  final int calories;
+  final int proteinG;
+  final int carbsG;
+  final int fatG;
+  final int fiberG;
+  final int sodiumMg;
+  const _SanitisedMacros({
+    required this.calories,
+    required this.proteinG,
+    required this.carbsG,
+    required this.fatG,
+    required this.fiberG,
+    required this.sodiumMg,
+  });
 }

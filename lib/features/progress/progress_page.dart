@@ -464,7 +464,7 @@ class _WeightLogList extends ConsumerWidget {
         Row(
           children: [
             Expanded(child: Text('RECENT LOGS', style: AppText.label)),
-            Text('Tap to edit · swipe to delete',
+            Text('Edit or delete each log',
                 style: AppText.label.copyWith(
                     color: AppColors.textTertiary, letterSpacing: 0.4)),
           ],
@@ -487,6 +487,38 @@ class _WeightLogRow extends ConsumerWidget {
   final BodyMeasurement? previous;
   const _WeightLogRow({required this.measurement, this.previous});
 
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(measurementRepoProvider);
+    final snapshot = _clone(measurement);
+    await repo.delete(measurement.id);
+    await ref.read(adaptiveTargetsProvider).recomputeFromWeightTrend();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        backgroundColor: AppColors.surfaceHigh,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14)),
+        content: Text(
+          'Removed · ${measurement.weightKg.toStringAsFixed(1)} kg',
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
+        ),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.accent,
+          onPressed: () async {
+            await repo.save(snapshot);
+            await ref
+                .read(adaptiveTargetsProvider)
+                .recomputeFromWeightTrend();
+          },
+        ),
+      ));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dateLabel = DateFormat('MMM d, y · h:mm a').format(measurement.date);
@@ -501,40 +533,7 @@ class _WeightLogRow extends ConsumerWidget {
       child: Dismissible(
         key: ValueKey('weight-${measurement.id}'),
         direction: DismissDirection.endToStart,
-        onDismissed: (_) async {
-          final repo = ref.read(measurementRepoProvider);
-          final snapshot = _clone(measurement);
-          await repo.delete(measurement.id);
-          await ref
-              .read(adaptiveTargetsProvider)
-              .recomputeFromWeightTrend();
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(SnackBar(
-              backgroundColor: AppColors.surfaceHigh,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 5),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              content: Text(
-                'Removed · ${measurement.weightKg.toStringAsFixed(1)} kg',
-                style: AppText.body
-                    .copyWith(color: AppColors.textPrimary),
-              ),
-              action: SnackBarAction(
-                label: 'Undo',
-                textColor: AppColors.accent,
-                onPressed: () async {
-                  await repo.save(snapshot);
-                  await ref
-                      .read(adaptiveTargetsProvider)
-                      .recomputeFromWeightTrend();
-                },
-              ),
-            ));
-        },
+        onDismissed: (_) => _delete(context, ref),
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -623,7 +622,7 @@ class _WeightLogRow extends ConsumerWidget {
                               color: AppColors.textTertiary)),
                       if (suspicious) ...[
                         const SizedBox(height: 4),
-                        Text('Looks like a big jump — tap to edit if this is a typo.',
+                        Text('Looks like a big jump — edit if this is a typo.',
                             style: AppText.meta.copyWith(
                                 fontSize: 10,
                                 color: AppColors.danger,
@@ -632,14 +631,63 @@ class _WeightLogRow extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    size: 18, color: AppColors.textTertiary),
+                _RowIconButton(
+                  icon: Icons.edit_rounded,
+                  tooltip: 'Edit',
+                  color: AppColors.accent,
+                  onTap: () => MeasurementEntrySheet.show(context,
+                      edit: measurement),
+                ),
+                const SizedBox(width: 6),
+                _RowIconButton(
+                  icon: Icons.delete_outline_rounded,
+                  tooltip: 'Delete',
+                  color: AppColors.danger,
+                  onTap: () => _confirmDelete(context, ref),
+                ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: Text('Delete this log?',
+            style: AppText.sectionTitle.copyWith(fontSize: 16)),
+        content: Text(
+          '${measurement.weightKg.toStringAsFixed(1)} kg on '
+          '${DateFormat('MMM d, y').format(measurement.date)} will be '
+          'removed. You can undo this for 5 seconds.',
+          style: AppText.body.copyWith(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Delete',
+                style: TextStyle(
+                  color: AppColors.danger,
+                  fontWeight: FontWeight.w800,
+                )),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (!context.mounted) return;
+    await _delete(context, ref);
   }
 
   BodyMeasurement _clone(BodyMeasurement m) {
@@ -656,6 +704,40 @@ class _WeightLogRow extends ConsumerWidget {
       ..photoPath = m.photoPath
       ..note = m.note
       ..createdAt = m.createdAt;
+  }
+}
+
+class _RowIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+  const _RowIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+      ),
+    );
   }
 }
 

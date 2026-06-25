@@ -791,24 +791,26 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Apple-Watch-style ring: a single yellow→dark gradient that
-    // darkens as the arc grows. When the user exceeds the target the
-    // overflow draws as a SECOND pass on top of the first lap, with
-    // a soft drop shadow underneath so you see the rings overlap.
+    // Apple-Watch-style ring: the whole stroke is ONE solid color that
+    // simply gets deeper as the ring fills. No per-arc gradient, no
+    // chance of the shader wrapping around the canvas centre and
+    // producing the "two-tone band" the user was seeing. When the user
+    // exceeds the target, an overflow ring draws on top with a darker
+    // shade plus a soft shadow underneath for the Apple Watch overlap.
     if (progress <= 0) return;
 
-    // -------- First lap (0 → min(progress, 1.0)) --------
+    // -------- First lap --------
     final primaryFraction = math.min(progress, 1.0);
     final primarySweep = 2 * math.pi * primaryFraction;
+    // Lerp from bright gold (0%) to deep saffron (100%) so the whole
+    // ring darkens as you eat more. At 50% it's a balanced amber.
+    final primaryColor = Color.lerp(
+      AppColors.warning,
+      AppColors.calorieFrom,
+      primaryFraction,
+    )!;
     final primaryPaint = Paint()
-      ..shader = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + primarySweep,
-        colors: [
-          AppColors.warning,      // bright gold at the start
-          AppColors.calorieFrom,  // deeper saffron at the tip
-        ],
-      ).createShader(rect)
+      ..color = primaryColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
@@ -820,7 +822,7 @@ class _RingPainter extends CustomPainter {
       final overflowSweep = 2 * math.pi * overflowFraction;
 
       // Soft shadow under the overflow ring so the visual "stacking"
-      // reads — mimics Apple Watch's exceeded-goal effect.
+      // reads — Apple Watch's exceeded-goal effect.
       final shadow = Paint()
         ..color = Colors.black.withValues(alpha: 0.30)
         ..style = PaintingStyle.stroke
@@ -829,18 +831,16 @@ class _RingPainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
       canvas.drawArc(rect, -math.pi / 2, overflowSweep, false, shadow);
 
-      // The overflow stroke itself — starts deep saffron (continuing
-      // visually from the end of the first lap) and lerps toward
-      // danger-red the further past target you go.
+      // Overflow stroke: starts deep saffron (visually continues from
+      // the end of the first lap) and lerps toward danger-red the
+      // further past target you go.
+      final overflowColor = Color.lerp(
+        AppColors.calorieFrom,
+        AppColors.danger,
+        overflowFraction,
+      )!;
       final overflowPaint = Paint()
-        ..shader = SweepGradient(
-          startAngle: -math.pi / 2,
-          endAngle: -math.pi / 2 + overflowSweep,
-          colors: [
-            AppColors.calorieFrom,
-            AppColors.danger,
-          ],
-        ).createShader(rect)
+        ..color = overflowColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;

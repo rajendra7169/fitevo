@@ -1329,15 +1329,16 @@ class _WaterWavePainter extends CustomPainter {
     final clamped = progress.clamp(0.0, 1.5);
 
     // At-or-above target: render a clean solid fill — no sine wave,
-    // no crest line. The glass is full; the water is still.
+    // no crest line. The glass is full; the water is still. Keep the
+    // alphas matched to the wave's so text/icons stay readable.
     if (clamped >= 1.0) {
       final fillPaint = Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            color.withValues(alpha: 0.32),
             color.withValues(alpha: 0.18),
+            color.withValues(alpha: 0.06),
           ],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
       canvas.drawRect(

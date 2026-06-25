@@ -183,4 +183,21 @@ class DataExportService {
       await isar.bodyMeasurements.clear();
     });
   }
+
+  /// Wipes only the day-to-day tracking history: food entries, workout
+  /// sessions, daily logs, body measurements. Keeps Profile (so targets
+  /// + onboarding survive), custom foods, exercises, and routines (so
+  /// the user doesn't have to rebuild their library).
+  ///
+  /// Useful for "start fresh on January 1" without losing the user's
+  /// setup or food/workout templates.
+  Future<void> clearTrainingData() async {
+    final isar = _db.isar;
+    await isar.writeTxn(() async {
+      await isar.foodEntrys.clear();
+      await isar.workoutSessions.clear();
+      await isar.dailyLogs.clear();
+      await isar.bodyMeasurements.clear();
+    });
+  }
 }

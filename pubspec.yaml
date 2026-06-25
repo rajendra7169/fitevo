@@ -66,6 +66,9 @@ dependencies:
   # Local prefs (auth-skipped flag, future settings)
   shared_preferences: ^2.3.2
 
+  # Share backup JSON to Drive / email / Files via system share sheet
+  share_plus: ^10.1.2
+
   # Local notifications (water + meal reminders)
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.0

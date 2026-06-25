@@ -544,6 +544,31 @@ class _AnonymousUpgradeViewState extends ConsumerState<_AnonymousUpgradeView> {
                 ),
               ),
               const SizedBox(height: 22),
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.cloud_outlined,
+                        size: 16, color: AppColors.accent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'No account? You can still back up — Settings → Export my data shares the JSON to Drive, email, or Files. Restore by importing on any device.',
+                        style: AppText.body
+                            .copyWith(fontSize: 12.5, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
               Text('UPGRADE TO A FULL ACCOUNT', style: AppText.label),
               const SizedBox(height: 10),
               Container(

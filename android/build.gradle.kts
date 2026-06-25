@@ -31,6 +31,19 @@ subprojects {
         } catch (_: Exception) {
             // Method not present on this AGP version — nothing to patch.
         }
+        // Force compileSdk 34 on every Android library subproject.
+        // isar_flutter_libs ships with compileSdk 31 which is too low
+        // for android:attr/lStar (introduced in API 31's R values).
+        try {
+            androidExt.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
+                .invoke(androidExt, 34)
+        } catch (_: Exception) {
+            // Older AGP exposes only the string overload.
+            try {
+                androidExt.javaClass.getMethod("setCompileSdkVersion", String::class.java)
+                    .invoke(androidExt, "android-34")
+            } catch (_: Exception) {}
+        }
     }
 }
 subprojects {

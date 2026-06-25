@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../services/settings/app_settings.dart';
 import '../../state/providers.dart';
@@ -19,6 +20,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _exporting = false;
   bool _resetting = false;
+  bool _resettingTraining = false;
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context)
@@ -40,63 +42,80 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final path =
           await ref.read(dataExportServiceProvider).exportToFile();
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => Dialog(
-          backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Exported',
-                    style:
-                        AppText.sectionTitle.copyWith(fontSize: 17)),
-                const SizedBox(height: 8),
-                Text(
-                  'Saved to:',
-                  style: AppText.body.copyWith(fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceHigh,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    path,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontFamily: 'monospace',
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: Text('OK',
-                        style: AppText.body.copyWith(
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      // Hand off to the system share sheet — user picks Drive, Files,
+      // Gmail, WhatsApp, anywhere they want the backup to land.
+      final result = await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'Fitevo backup',
+        text:
+            'Fitevo backup — restore by importing this JSON on a fresh install.',
       );
+      if (!mounted) return;
+      if (result.status == ShareResultStatus.success) {
+        _toast('Backup shared.');
+      }
     } catch (_) {
       if (mounted) _toast('Export failed.');
     } finally {
       if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _resetTrainingData() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Reset training data?',
+                  style: AppText.sectionTitle.copyWith(fontSize: 17)),
+              const SizedBox(height: 6),
+              Text(
+                'Wipes every food log, workout session, weigh-in, and daily log. Profile, targets, custom foods, exercises, and routines stay. Cannot be undone.',
+                style: AppText.body,
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text('Cancel',
+                        style: AppText.body.copyWith(
+                            color: AppColors.textPrimary)),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: Text('Reset',
+                        style: AppText.body.copyWith(
+                            color: const Color(0xFFFF6B6B),
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _resettingTraining = true);
+    try {
+      await ref.read(dataExportServiceProvider).clearTrainingData();
+      if (!mounted) return;
+      _toast('Training data cleared.');
+    } catch (_) {
+      if (mounted) _toast('Reset failed.');
+    } finally {
+      if (mounted) setState(() => _resettingTraining = false);
     }
   }
 
@@ -452,6 +471,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       ),
                       Icon(Icons.chevron_right_rounded,
                           size: 18, color: AppColors.textTertiary),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _resettingTraining ? null : _resetTrainingData,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.stroke),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.replay_rounded,
+                          size: 18, color: AppColors.accent),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _resettingTraining
+                                  ? 'Clearing…'
+                                  : 'Reset training data',
+                              style: AppText.body.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                                'Clears food, workouts, weigh-ins, and daily logs. Keeps your profile, custom foods, and routines.',
+                                style: AppText.meta.copyWith(fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),

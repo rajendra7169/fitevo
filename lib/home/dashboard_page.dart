@@ -34,7 +34,12 @@ import '../state/providers.dart';
 import '../theme.dart';
 
 class DashboardPage extends ConsumerWidget {
-  const DashboardPage({super.key});
+  /// Bumped by HomeShell every time the user re-enters the Home tab.
+  /// Threaded into the calorie ring's ValueKey so the fill animation
+  /// restarts on tab return (the ring widget remounts; the rest of
+  /// the dashboard stays as-is so other state isn't lost).
+  final int homeReentryGen;
+  const DashboardPage({super.key, this.homeReentryGen = 0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,6 +81,10 @@ class DashboardPage extends ConsumerWidget {
             section(
                 2,
                 _CalorieRing(
+                  // ValueKey changes on Home re-entry so Flutter remounts
+                  // the ring and its TweenAnimationBuilders animate fresh
+                  // from 0 to current value, instead of just sitting.
+                  key: ValueKey('ring-$homeReentryGen'),
                   consumed: totals.calories,
                   target: TodaysActivityMath.effectiveTodayCalorieTarget(
                     profile: profile,
@@ -664,7 +673,11 @@ class _RoundIconButton extends StatelessWidget {
 class _CalorieRing extends StatelessWidget {
   final int consumed;
   final int target;
-  const _CalorieRing({required this.consumed, required this.target});
+  const _CalorieRing({
+    super.key,
+    required this.consumed,
+    required this.target,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -30,6 +30,9 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
   double _scale = 1.0;
   bool _busy = false;
   late bool _favorite;
+  // Local override so the UI reflects the new timestamp immediately
+  // after editing, before the Isar stream catches up.
+  DateTime? _timestampOverride;
 
   static const _scales = [0.5, 1.0, 1.5, 2.0];
 
@@ -38,6 +41,9 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
     super.initState();
     _favorite = widget.entry.isFavorite;
   }
+
+  DateTime get _displayedTimestamp =>
+      _timestampOverride ?? widget.entry.timestamp;
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context)
@@ -64,6 +70,67 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
       _toast('Logged · ${newEntry.calories} kcal');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Lets the user fix a timestamp they forgot to set at log time.
+  /// Common case: AI-logged at 9pm but the food was actually eaten at
+  /// 1pm. Without this, the day's distribution graph is wrong.
+  Future<void> _editTime() async {
+    final initial = _displayedTimestamp;
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.accent,
+                onPrimary: AppColors.onAccent,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (pickedDate == null || !mounted) return;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.accent,
+                onPrimary: AppColors.onAccent,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (pickedTime == null || !mounted) return;
+    final newTs = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    setState(() => _timestampOverride = newTs);
+    try {
+      await ref
+          .read(nutritionRepoProvider)
+          .updateFoodEntryTimestamp(widget.entry.id, newTs);
+      if (mounted) _toast('Logged time updated.');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _timestampOverride = null);
+        _toast('Could not update time.');
+      }
     }
   }
 
@@ -142,7 +209,14 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
   @override
   Widget build(BuildContext context) {
     final e = widget.entry;
-    final time = DateFormat('h:mm a').format(e.timestamp);
+    final ts = _displayedTimestamp;
+    final now = DateTime.now();
+    final isToday = ts.year == now.year &&
+        ts.month == now.month &&
+        ts.day == now.day;
+    final time = isToday
+        ? DateFormat('h:mm a').format(ts)
+        : DateFormat('MMM d · h:mm a').format(ts);
     final scaledCal = (e.calories * _scale).round();
     final scaledProtein = (e.proteinG * _scale).round();
     final scaledCarbs = (e.carbsG * _scale).round();
@@ -177,10 +251,52 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: AppText.sectionTitle),
-                      const SizedBox(height: 4),
-                      Text(
-                          '${e.quantity.isEmpty ? '1 serving' : e.quantity} · logged $time',
-                          style: AppText.meta),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            e.quantity.isEmpty ? '1 serving' : e.quantity,
+                            style: AppText.meta,
+                          ),
+                          Text(' · ', style: AppText.meta),
+                          // Tap-to-edit timestamp chip
+                          GestureDetector(
+                            onTap: _editTime,
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                    color: AppColors.accent
+                                        .withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.schedule_rounded,
+                                      size: 11, color: AppColors.accent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    time,
+                                    style: AppText.meta.copyWith(
+                                      color: AppColors.accent,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.edit_rounded,
+                                      size: 10, color: AppColors.accent),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

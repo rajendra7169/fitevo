@@ -14,13 +14,11 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
-
-  static const _pages = [
-    DashboardPage(),
-    WorkoutPage(),
-    ProgressPage(),
-    CoachPage(),
-  ];
+  // Increments every time the user taps Home from a different tab.
+  // DashboardPage uses this as a ValueKey on its calorie ring so the
+  // fill animation re-fires on tab return — the dashboard itself is
+  // still kept-alive by IndexedStack, only the ring remounts.
+  int _homeReentryGen = 0;
 
   static const _items = [
     (Icons.dashboard_rounded, 'Home'),
@@ -29,17 +27,30 @@ class _HomeShellState extends State<HomeShell> {
     (Icons.auto_awesome_rounded, 'Coach'),
   ];
 
+  void _onTab(int i) {
+    if (i == 0 && _index != 0) _homeReentryGen++;
+    setState(() => _index = i);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        body: IndexedStack(index: _index, children: _pages),
+        body: IndexedStack(
+          index: _index,
+          children: [
+            DashboardPage(homeReentryGen: _homeReentryGen),
+            const WorkoutPage(),
+            const ProgressPage(),
+            const CoachPage(),
+          ],
+        ),
         bottomNavigationBar: _BottomNav(
           index: _index,
           items: _items,
-          onTap: (i) => setState(() => _index = i),
+          onTap: _onTab,
         ),
       ),
     );

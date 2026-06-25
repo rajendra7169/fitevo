@@ -132,6 +132,20 @@ class NutritionRepo {
     });
   }
 
+  /// Move an existing food entry to a new timestamp. Used when the user
+  /// logged something but forgot to set the actual eating time. We also
+  /// update [dateKey] so today's-totals queries pick it up under the
+  /// correct day if the entry crosses midnight.
+  Future<void> updateFoodEntryTimestamp(int id, DateTime newTimestamp) async {
+    await _isar.writeTxn(() async {
+      final e = await _isar.foodEntrys.get(id);
+      if (e == null) return;
+      e.timestamp = newTimestamp;
+      e.dateKey = DailyLog.keyFor(newTimestamp);
+      await _isar.foodEntrys.put(e);
+    });
+  }
+
   Future<void> toggleFavorite(int id) async {
     await _isar.writeTxn(() async {
       final e = await _isar.foodEntrys.get(id);

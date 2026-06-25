@@ -1,9 +1,14 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/daily_log.dart';
@@ -132,6 +137,460 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     ].join('\n');
   }
 
+  Future<void> _sharePdf({
+    required Profile profile,
+    required DailyTotals totals,
+    required List<FoodEntry> dayFoods,
+    required List<WorkoutSession> daySessions,
+  }) async {
+    try {
+      final doc = await _buildPdf(
+        profile: profile,
+        totals: totals,
+        dayFoods: dayFoods,
+        daySessions: daySessions,
+      );
+      final bytes = await doc.save();
+      final dir = await getTemporaryDirectory();
+      final dateLabel = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final file = File('${dir.path}/fitevo_report_${_mode.name}_$dateLabel.pdf');
+      await file.writeAsBytes(bytes);
+      final title = 'Fitevo · ${_mode.name} report · '
+          '${DateFormat('MMM d, y').format(_selectedDate)}';
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'application/pdf')],
+        subject: title,
+        text: title,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppColors.surfaceHigh,
+        content: Text(
+          'Could not share PDF: $e',
+          style: AppText.body.copyWith(color: AppColors.textPrimary),
+        ),
+      ));
+    }
+  }
+
+  Future<pw.Document> _buildPdf({
+    required Profile profile,
+    required DailyTotals totals,
+    required List<FoodEntry> dayFoods,
+    required List<WorkoutSession> daySessions,
+  }) async {
+    final doc = pw.Document();
+    final dateLabel = DateFormat('EEEE, MMM d, y').format(_selectedDate);
+    final accent = PdfColor.fromInt(0xFFE8702C);
+    final muted = PdfColor.fromInt(0xFF7A7367);
+
+    final groups = _groupFoodsForPdf(dayFoods);
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(28),
+        build: (ctx) => [
+          // Header
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Fitevo · Daily Report',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          color: muted,
+                          letterSpacing: 0.4,
+                        )),
+                    pw.SizedBox(height: 4),
+                    pw.Text(dateLabel,
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                        )),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                        _mode == _ReportMode.food
+                            ? 'Food summary'
+                            : 'Workout summary',
+                        style: pw.TextStyle(fontSize: 12, color: accent)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 14),
+          pw.Container(height: 1, color: muted),
+          pw.SizedBox(height: 14),
+
+          // Stats summary
+          if (_mode == _ReportMode.food)
+            _pdfFoodStats(profile, totals, accent, muted)
+          else
+            _pdfWorkoutStats(daySessions, accent, muted),
+
+          pw.SizedBox(height: 18),
+
+          // AI summary block
+          if (_aiSummary != null && _aiSummary!.trim().isNotEmpty) ...[
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFFFFF6EE),
+                borderRadius:
+                    const pw.BorderRadius.all(pw.Radius.circular(8)),
+                border: pw.Border.all(color: accent, width: 0.5),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('AI REPORT',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        letterSpacing: 0.6,
+                        color: accent,
+                        fontWeight: pw.FontWeight.bold,
+                      )),
+                  pw.SizedBox(height: 6),
+                  pw.Text(_aiSummary!,
+                      style: pw.TextStyle(fontSize: 11, lineSpacing: 2)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 18),
+          ],
+
+          // Section: meals or sessions
+          pw.Text(
+              _mode == _ReportMode.food
+                  ? 'MEALS · ${dayFoods.length} ${dayFoods.length == 1 ? 'item' : 'items'}'
+                  : 'SESSIONS · ${daySessions.length}',
+              style: pw.TextStyle(
+                fontSize: 9,
+                letterSpacing: 0.8,
+                color: muted,
+                fontWeight: pw.FontWeight.bold,
+              )),
+          pw.SizedBox(height: 8),
+          if (_mode == _ReportMode.food)
+            ..._pdfMealCards(groups, accent, muted)
+          else
+            ..._pdfSessionCards(daySessions, accent, muted),
+
+          if ((_mode == _ReportMode.food && dayFoods.isEmpty) ||
+              (_mode == _ReportMode.workout && daySessions.isEmpty))
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(20),
+              child: pw.Center(
+                child: pw.Text(
+                    _mode == _ReportMode.food
+                        ? 'No food logged on this day.'
+                        : 'No workout logged on this day.',
+                    style: pw.TextStyle(color: muted, fontSize: 11)),
+              ),
+            ),
+
+          pw.SizedBox(height: 18),
+          pw.Container(height: 1, color: muted),
+          pw.SizedBox(height: 6),
+          pw.Text(
+              'Generated by Fitevo · ${DateFormat('MMM d, y · h:mm a').format(DateTime.now())}',
+              style: pw.TextStyle(fontSize: 8, color: muted)),
+        ],
+      ),
+    );
+    return doc;
+  }
+
+  List<List<FoodEntry>> _groupFoodsForPdf(List<FoodEntry> entries) {
+    if (entries.isEmpty) return const [];
+    final groups = <List<FoodEntry>>[];
+    for (final e in entries) {
+      if (groups.isNotEmpty) {
+        final last = groups.last.last;
+        final sameInput =
+            last.rawInput.isNotEmpty && last.rawInput == e.rawInput;
+        final closeInTime = last.timestamp
+                .difference(e.timestamp)
+                .abs() <
+            const Duration(minutes: 2);
+        if (sameInput && closeInTime) {
+          groups.last.add(e);
+          continue;
+        }
+      }
+      groups.add([e]);
+    }
+    return groups;
+  }
+
+  pw.Widget _pdfFoodStats(Profile profile, DailyTotals totals,
+      PdfColor accent, PdfColor muted) {
+    pw.Widget tile(String label, String value, String target) {
+      return pw.Expanded(
+        child: pw.Container(
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: muted, width: 0.5),
+            borderRadius:
+                const pw.BorderRadius.all(pw.Radius.circular(6)),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(label,
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    letterSpacing: 0.6,
+                    color: muted,
+                    fontWeight: pw.FontWeight.bold,
+                  )),
+              pw.SizedBox(height: 4),
+              pw.RichText(
+                text: pw.TextSpan(children: [
+                  pw.TextSpan(
+                      text: value,
+                      style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold)),
+                  pw.TextSpan(
+                      text: ' $target',
+                      style: pw.TextStyle(fontSize: 9, color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return pw.Row(children: [
+      tile('CALORIES', '${totals.calories}',
+          '/ ${profile.effectiveCalorieTarget} kcal'),
+      pw.SizedBox(width: 8),
+      tile('PROTEIN', '${totals.proteinG}',
+          '/ ${profile.effectiveProteinTarget}g'),
+      pw.SizedBox(width: 8),
+      tile('CARBS', '${totals.carbsG}',
+          '/ ${profile.effectiveCarbTarget}g'),
+      pw.SizedBox(width: 8),
+      tile('FAT', '${totals.fatG}', '/ ${profile.effectiveFatTarget}g'),
+    ]);
+  }
+
+  pw.Widget _pdfWorkoutStats(
+      List<WorkoutSession> sessions, PdfColor accent, PdfColor muted) {
+    final totalMin =
+        sessions.fold<int>(0, (s, w) => s + w.duration.inMinutes);
+    final totalSets =
+        sessions.fold<int>(0, (s, w) => s + w.sets.length);
+    final totalVolume = sessions.fold<double>(
+        0, (s, w) => s + w.sets.fold(0.0, (a, b) => a + b.weightKg * b.reps));
+    final exCount = sessions
+        .expand((s) => s.sets.map((x) => x.exerciseName))
+        .toSet()
+        .length;
+
+    pw.Widget tile(String label, String value, String unit) {
+      return pw.Expanded(
+        child: pw.Container(
+          padding: const pw.EdgeInsets.all(10),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: muted, width: 0.5),
+            borderRadius:
+                const pw.BorderRadius.all(pw.Radius.circular(6)),
+          ),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(label,
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    letterSpacing: 0.6,
+                    color: muted,
+                    fontWeight: pw.FontWeight.bold,
+                  )),
+              pw.SizedBox(height: 4),
+              pw.RichText(
+                text: pw.TextSpan(children: [
+                  pw.TextSpan(
+                      text: value,
+                      style: pw.TextStyle(
+                          fontSize: 16,
+                          fontWeight: pw.FontWeight.bold)),
+                  pw.TextSpan(
+                      text: ' $unit',
+                      style: pw.TextStyle(fontSize: 9, color: muted)),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return pw.Row(children: [
+      tile('DURATION', '$totalMin', 'min'),
+      pw.SizedBox(width: 8),
+      tile('SETS', '$totalSets', ''),
+      pw.SizedBox(width: 8),
+      tile('EXERCISES', '$exCount', ''),
+      pw.SizedBox(width: 8),
+      tile('VOLUME', totalVolume.toStringAsFixed(0), 'kg'),
+    ]);
+  }
+
+  List<pw.Widget> _pdfMealCards(
+      List<List<FoodEntry>> groups, PdfColor accent, PdfColor muted) {
+    final out = <pw.Widget>[];
+    for (final g in groups) {
+      final time = DateFormat('h:mm a').format(g.first.timestamp);
+      final totalKcal = g.fold<int>(0, (s, e) => s + e.calories);
+      final totalP = g.fold<int>(0, (s, e) => s + e.proteinG);
+      final totalC = g.fold<int>(0, (s, e) => s + e.carbsG);
+      final totalF = g.fold<int>(0, (s, e) => s + e.fatG);
+      final raw = g.first.rawInput;
+
+      out.add(pw.Container(
+        margin: const pw.EdgeInsets.only(bottom: 8),
+        padding: const pw.EdgeInsets.all(10),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: muted, width: 0.5),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                pw.Text(time,
+                    style: pw.TextStyle(
+                        fontSize: 10,
+                        color: muted,
+                        fontWeight: pw.FontWeight.bold)),
+                if (g.length > 1) ...[
+                  pw.SizedBox(width: 6),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 1),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColor.fromInt(0xFFFFEEDF),
+                      borderRadius: const pw.BorderRadius.all(
+                          pw.Radius.circular(4)),
+                    ),
+                    child: pw.Text('MEAL · ${g.length} ITEMS',
+                        style: pw.TextStyle(
+                          color: accent,
+                          fontSize: 7,
+                          fontWeight: pw.FontWeight.bold,
+                          letterSpacing: 0.4,
+                        )),
+                  ),
+                ],
+                pw.Spacer(),
+                pw.Text('$totalKcal kcal',
+                    style: pw.TextStyle(
+                        fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+            if (raw.isNotEmpty) ...[
+              pw.SizedBox(height: 4),
+              pw.Text('"$raw"',
+                  style: pw.TextStyle(
+                      fontSize: 10,
+                      color: muted,
+                      fontStyle: pw.FontStyle.italic)),
+            ],
+            pw.SizedBox(height: 4),
+            pw.Text('${totalP}g P · ${totalC}g C · ${totalF}g F',
+                style: pw.TextStyle(fontSize: 9, color: muted)),
+            if (g.length > 1) ...[
+              pw.SizedBox(height: 6),
+              pw.Container(height: 0.5, color: muted),
+              pw.SizedBox(height: 6),
+              for (var i = 0; i < g.length; i++)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 2),
+                  child: pw.Row(children: [
+                    pw.SizedBox(
+                      width: 18,
+                      child: pw.Text('${i + 1}.',
+                          style: pw.TextStyle(
+                              fontSize: 9, color: muted)),
+                    ),
+                    pw.Expanded(
+                      child: pw.Text(
+                          g[i].description.isEmpty
+                              ? g[i].rawInput
+                              : g[i].description,
+                          style: pw.TextStyle(fontSize: 9),
+                          maxLines: 1,
+                          overflow: pw.TextOverflow.clip),
+                    ),
+                    pw.Text('${g[i].calories} kcal',
+                        style: pw.TextStyle(fontSize: 9, color: muted)),
+                  ]),
+                ),
+            ],
+          ],
+        ),
+      ));
+    }
+    return out;
+  }
+
+  List<pw.Widget> _pdfSessionCards(
+      List<WorkoutSession> sessions, PdfColor accent, PdfColor muted) {
+    final out = <pw.Widget>[];
+    for (final s in sessions) {
+      final start = DateFormat('h:mm a').format(s.startedAt);
+      final dur = s.duration.inMinutes;
+      final volume = s.sets
+          .fold<double>(0, (a, b) => a + b.weightKg * b.reps)
+          .toStringAsFixed(0);
+      out.add(pw.Container(
+        margin: const pw.EdgeInsets.only(bottom: 8),
+        padding: const pw.EdgeInsets.all(10),
+        decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: muted, width: 0.5),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                      s.routineDayName.isEmpty
+                          ? (s.routineName.isEmpty
+                              ? 'Workout'
+                              : s.routineName)
+                          : '${s.routineName} · ${s.routineDayName}',
+                      style: pw.TextStyle(
+                          fontSize: 11,
+                          fontWeight: pw.FontWeight.bold)),
+                ),
+                pw.Text('$dur min',
+                    style: pw.TextStyle(
+                        fontSize: 11, fontWeight: pw.FontWeight.bold)),
+              ],
+            ),
+            pw.SizedBox(height: 3),
+            pw.Text(
+                '$start  ·  ${s.sets.length} sets  ·  $volume kg total',
+                style: pw.TextStyle(fontSize: 9, color: muted)),
+          ],
+        ),
+      ));
+    }
+    return out;
+  }
+
   String _workoutContext(Profile profile, List<WorkoutSession> sessions) {
     if (sessions.isEmpty) return 'No workout was logged on this day.';
     final totalMin =
@@ -173,6 +632,20 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
         elevation: 0,
         title: Text('Daily Report', style: AppText.sectionTitle),
         iconTheme: IconThemeData(color: AppColors.textPrimary),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.ios_share_rounded, color: AppColors.accent),
+            tooltip: 'Share as PDF',
+            onPressed: profile == null
+                ? null
+                : () => _sharePdf(
+                      profile: profile,
+                      totals: totals,
+                      dayFoods: dayFoods,
+                      daySessions: daySessions,
+                    ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: profile == null
@@ -976,6 +1449,31 @@ class _FoodList extends StatelessWidget {
   final List<FoodEntry> entries;
   const _FoodList({required this.entries});
 
+  /// Cluster consecutive entries that share the same `rawInput` and
+  /// were logged within 2 minutes — i.e. the AI split a single meal
+  /// into multiple items. Mirrors the grouping used on Today's Food.
+  List<List<FoodEntry>> _group(List<FoodEntry> entries) {
+    if (entries.isEmpty) return const [];
+    final groups = <List<FoodEntry>>[];
+    for (final e in entries) {
+      if (groups.isNotEmpty) {
+        final last = groups.last.last;
+        final sameInput =
+            last.rawInput.isNotEmpty && last.rawInput == e.rawInput;
+        final closeInTime = last.timestamp
+                .difference(e.timestamp)
+                .abs() <
+            const Duration(minutes: 2);
+        if (sameInput && closeInTime) {
+          groups.last.add(e);
+          continue;
+        }
+      }
+      groups.add([e]);
+    }
+    return groups;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
@@ -983,6 +1481,7 @@ class _FoodList extends StatelessWidget {
           icon: Icons.restaurant_rounded,
           message: 'No food logged on this day.');
     }
+    final groups = _group(entries);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -992,11 +1491,229 @@ class _FoodList extends StatelessWidget {
                 letterSpacing: 0.8,
                 color: AppColors.textTertiary)),
         const SizedBox(height: 10),
-        for (final e in entries) ...[
-          _FoodRow(entry: e),
+        for (final g in groups) ...[
+          g.length == 1
+              ? _FoodRow(entry: g.first)
+              : _FoodGroupCard(entries: g),
           const SizedBox(height: 8),
         ],
       ],
+    );
+  }
+}
+
+/// Compact card for an AI-split meal: header with time + total kcal,
+/// the user's raw input quoted, then itemised lines.
+class _FoodGroupCard extends StatelessWidget {
+  final List<FoodEntry> entries;
+  const _FoodGroupCard({required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    final time = DateFormat('h:mm a').format(entries.first.timestamp);
+    final totalKcal = entries.fold<int>(0, (s, e) => s + e.calories);
+    final totalP = entries.fold<int>(0, (s, e) => s + e.proteinG);
+    final totalC = entries.fold<int>(0, (s, e) => s + e.carbsG);
+    final totalF = entries.fold<int>(0, (s, e) => s + e.fatG);
+    final raw = entries.first.rawInput;
+    final snippet = raw.length > 90 ? '${raw.substring(0, 90)}…' : raw;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: AppColors.accent.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.restaurant_rounded,
+                          size: 10, color: AppColors.accent),
+                      const SizedBox(width: 4),
+                      Text('MEAL · ${entries.length} ITEMS',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          )),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.schedule_rounded,
+                    size: 11, color: AppColors.textTertiary),
+                const SizedBox(width: 4),
+                Text(time,
+                    style: AppText.meta.copyWith(
+                        fontSize: 11,
+                        color: AppColors.textTertiary)),
+                const Spacer(),
+                Text('$totalKcal',
+                    style: AppText.bigNumber.copyWith(
+                        fontSize: 16, color: AppColors.textPrimary)),
+                const SizedBox(width: 3),
+                Text('kcal',
+                    style: AppText.meta.copyWith(
+                        fontSize: 10,
+                        color: AppColors.textTertiary,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+          if (raw.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: Text('"$snippet"',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    height: 1.3,
+                  )),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _MacroPill(
+                    label: 'P',
+                    value: '${totalP}g',
+                    color: AppColors.protein),
+                _MacroPill(
+                    label: 'C',
+                    value: '${totalC}g',
+                    color: AppColors.carbs),
+                _MacroPill(
+                    label: 'F',
+                    value: '${totalF}g',
+                    color: AppColors.fat),
+              ],
+            ),
+          ),
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            color: AppColors.accent.withValues(alpha: 0.18),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+            child: Column(
+              children: [
+                for (var i = 0; i < entries.length; i++) ...[
+                  _MealItemRow(entry: entries[i], index: i + 1),
+                  if (i < entries.length - 1) const SizedBox(height: 6),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealItemRow extends StatelessWidget {
+  final FoodEntry entry;
+  final int index;
+  const _MealItemRow({required this.entry, required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final name =
+        entry.description.isEmpty ? entry.rawInput : entry.description;
+    return Row(
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceHigh,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text('$index',
+              style: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+              if (entry.quantity.isNotEmpty)
+                Text(entry.quantity,
+                    style: AppText.meta.copyWith(
+                        fontSize: 10,
+                        color: AppColors.textTertiary)),
+            ],
+          ),
+        ),
+        Text('${entry.calories}',
+            style: AppText.bigNumber
+                .copyWith(fontSize: 12, color: AppColors.textPrimary)),
+        const SizedBox(width: 2),
+        Text('kcal',
+            style: AppText.meta.copyWith(
+                fontSize: 9,
+                color: AppColors.textTertiary,
+                fontWeight: FontWeight.w700)),
+      ],
+    );
+  }
+}
+
+class _MacroPill extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _MacroPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Text('$value $label',
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          )),
     );
   }
 }

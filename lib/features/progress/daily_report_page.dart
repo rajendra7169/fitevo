@@ -560,7 +560,8 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                       fontStyle: pw.FontStyle.italic)),
             ],
             pw.SizedBox(height: 4),
-            pw.Text('${totalP}g P · ${totalC}g C · ${totalF}g F',
+            pw.Text(
+                'Protein ${totalP}g  ·  Carbs ${totalC}g  ·  Fat ${totalF}g',
                 style: pw.TextStyle(fontSize: 9, color: muted)),
             if (g.length > 1) ...[
               pw.SizedBox(height: 6),

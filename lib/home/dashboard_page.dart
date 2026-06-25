@@ -491,6 +491,8 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     final hasText = _ctl.text.trim().isNotEmpty;
     final showSubmit = hasText || _focus.hasFocus;
 
+    final hasClarify = _pendingQuestion != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -498,39 +500,101 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
           const _ApiKeyHint(),
           const SizedBox(height: 10),
         ],
-        if (_pendingQuestion != null) ...[
-          _ClarificationChip(
-            question: _pendingQuestion!,
-            round: _clarifyRound,
-            onCancel: _cancelClarification,
-          ),
-          const SizedBox(height: 8),
-        ],
         AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: const Duration(milliseconds: 240),
           curve: Curves.easeOut,
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: _focus.hasFocus
-                  ? AppColors.accent
-                  : AppColors.stroke,
-              width: _focus.hasFocus ? 1.5 : 1,
+              color: hasClarify
+                  ? AppColors.accent.withValues(alpha: 0.45)
+                  : _focus.hasFocus
+                      ? AppColors.accent
+                      : AppColors.stroke,
+              width: hasClarify || _focus.hasFocus ? 1.5 : 1,
             ),
           ),
-          padding: const EdgeInsets.fromLTRB(18, 4, 8, 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 12),
-                child: Icon(Icons.auto_awesome_rounded,
-                    size: 18, color: AppColors.accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
+          // When a clarification is pending, the container grows into a
+          // mini conversation panel — question on top, divider, then the
+          // input row below. AnimatedSize smooths the height change.
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (hasClarify) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 12, 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.auto_awesome_rounded,
+                            size: 16, color: AppColors.accent),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _clarifyRound > 1
+                                    ? 'AI NEEDS A DETAIL · ROUND $_clarifyRound'
+                                    : 'AI NEEDS A DETAIL',
+                                style: AppText.label.copyWith(
+                                  color: AppColors.accent,
+                                  fontSize: 10,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _pendingQuestion!,
+                                style: AppText.body.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _cancelClarification,
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(Icons.close_rounded,
+                                size: 16, color: AppColors.textTertiary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 14),
+                    color: AppColors.stroke,
+                  ),
+                ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 4, 8, 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (!hasClarify) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12, bottom: 12),
+                          child: Icon(Icons.auto_awesome_rounded,
+                              size: 18, color: AppColors.accent),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: TextField(
                   controller: _ctl,
                   focusNode: _focus,
                   minLines: 1,
@@ -603,7 +667,11 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                     icon: Icons.camera_alt_rounded, onTap: _onCameraTap),
                 const SizedBox(width: 4),
               ],
-            ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -637,77 +705,6 @@ class _SubmitButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Soft inline card shown above the AI input when the model asked a
-/// clarifying question instead of guessing. The user answers in the
-/// existing input field and the bar re-prompts with the combined
-/// context. Cancelling drops everything and resets to fresh input.
-class _ClarificationChip extends StatelessWidget {
-  final String question;
-  final int round;
-  final VoidCallback onCancel;
-  const _ClarificationChip({
-    required this.question,
-    required this.round,
-    required this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-      decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.help_outline_rounded,
-              size: 18, color: AppColors.accent),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI needs a detail$_roundSuffix',
-                  style: AppText.label.copyWith(
-                    color: AppColors.accent,
-                    fontSize: 10.5,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  question,
-                  style: AppText.body.copyWith(
-                    color: AppColors.textPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onCancel,
-            behavior: HitTestBehavior.opaque,
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(Icons.close_rounded,
-                  size: 16, color: AppColors.textTertiary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String get _roundSuffix => round > 1 ? ' · round $round' : '';
 }
 
 class _SheetTile extends StatelessWidget {

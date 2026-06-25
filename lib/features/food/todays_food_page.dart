@@ -149,21 +149,86 @@ List<List<FoodEntry>> _groupEntries(List<FoodEntry> entries) {
   return groups;
 }
 
-class _MealGroupCard extends StatefulWidget {
+class _MealGroupCard extends ConsumerStatefulWidget {
   final List<FoodEntry> entries;
   const _MealGroupCard({required this.entries});
 
   @override
-  State<_MealGroupCard> createState() => _MealGroupCardState();
+  ConsumerState<_MealGroupCard> createState() => _MealGroupCardState();
 }
 
-class _MealGroupCardState extends State<_MealGroupCard> {
+class _MealGroupCardState extends ConsumerState<_MealGroupCard> {
   bool _expanded = true;
+  // Local override so the timestamp updates instantly after editing,
+  // before the Isar stream rebuilds the parent list.
+  DateTime? _tsOverride;
+
+  Future<void> _editGroupTime() async {
+    final initial = _tsOverride ?? widget.entries.first.timestamp;
+    final now = DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: now,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.accent,
+                onPrimary: AppColors.onAccent,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (pickedDate == null || !mounted) return;
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.accent,
+                onPrimary: AppColors.onAccent,
+                surface: AppColors.surface,
+                onSurface: AppColors.textPrimary,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (pickedTime == null || !mounted) return;
+    final newTs = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+    setState(() => _tsOverride = newTs);
+    try {
+      final ids = widget.entries.map((e) => e.id).toList();
+      await ref
+          .read(nutritionRepoProvider)
+          .updateFoodEntriesTimestamp(ids, newTs);
+    } catch (_) {
+      if (mounted) setState(() => _tsOverride = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final entries = widget.entries;
-    final time = DateFormat('h:mm a').format(entries.first.timestamp);
+    final displayedTs = _tsOverride ?? entries.first.timestamp;
+    final now = DateTime.now();
+    final isToday = displayedTs.year == now.year &&
+        displayedTs.month == now.month &&
+        displayedTs.day == now.day;
+    final time = isToday
+        ? DateFormat('h:mm a').format(displayedTs)
+        : DateFormat('MMM d · h:mm a').format(displayedTs);
     final totalKcal = entries.fold<int>(0, (s, e) => s + e.calories);
     final totalP = entries.fold<int>(0, (s, e) => s + e.proteinG);
     final totalC = entries.fold<int>(0, (s, e) => s + e.carbsG);
@@ -222,11 +287,40 @@ class _MealGroupCardState extends State<_MealGroupCard> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(Icons.schedule_rounded,
-                        size: 11, color: AppColors.textTertiary),
-                    const SizedBox(width: 4),
-                    Text(time,
-                        style: AppText.meta.copyWith(fontSize: 12)),
+                    // Tap-to-edit meal time. Batch updates all items in
+                    // the group so AI-split entries stay in sync.
+                    GestureDetector(
+                      onTap: _editGroupTime,
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: AppColors.accent
+                                  .withValues(alpha: 0.30)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.schedule_rounded,
+                                size: 11, color: AppColors.accent),
+                            const SizedBox(width: 4),
+                            Text(time,
+                                style: AppText.meta.copyWith(
+                                  fontSize: 12,
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                            const SizedBox(width: 4),
+                            Icon(Icons.edit_rounded,
+                                size: 10, color: AppColors.accent),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),

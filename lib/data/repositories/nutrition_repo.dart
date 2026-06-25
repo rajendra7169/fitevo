@@ -146,6 +146,25 @@ class NutritionRepo {
     });
   }
 
+  /// Batch-update timestamps for a group of entries that were logged as
+  /// one meal. The AI splits multi-item prompts into several FoodEntry
+  /// rows (e.g. "creatine + protein shake" → 2 entries), but the user
+  /// ate them at the same moment — editing one shouldn't desync them.
+  Future<void> updateFoodEntriesTimestamp(
+      List<int> ids, DateTime newTimestamp) async {
+    if (ids.isEmpty) return;
+    await _isar.writeTxn(() async {
+      final newDateKey = DailyLog.keyFor(newTimestamp);
+      for (final id in ids) {
+        final e = await _isar.foodEntrys.get(id);
+        if (e == null) continue;
+        e.timestamp = newTimestamp;
+        e.dateKey = newDateKey;
+        await _isar.foodEntrys.put(e);
+      }
+    });
+  }
+
   Future<void> toggleFavorite(int id) async {
     await _isar.writeTxn(() async {
       final e = await _isar.foodEntrys.get(id);

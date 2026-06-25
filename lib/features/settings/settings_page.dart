@@ -96,7 +96,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onPressed: () => Navigator.of(ctx).pop(true),
                     child: Text('Reset',
                         style: AppText.body.copyWith(
-                            color: const Color(0xFFFF6B6B),
+                            color: AppColors.danger,
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -154,7 +154,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     onPressed: () => Navigator.of(ctx).pop(true),
                     child: Text('Wipe',
                         style: AppText.body.copyWith(
-                            color: const Color(0xFFFF6B6B),
+                            color: AppColors.danger,
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -527,13 +527,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   child: Row(
                     children: [
                       Icon(Icons.restart_alt_rounded,
-                          size: 18, color: const Color(0xFFFF6B6B)),
+                          size: 18, color: AppColors.danger),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _resetting ? 'Wiping…' : 'Reset everything',
                           style: AppText.body.copyWith(
-                              color: const Color(0xFFFF6B6B),
+                              color: AppColors.danger,
                               fontWeight: FontWeight.w700),
                         ),
                       ),

@@ -164,7 +164,7 @@ class _AccountPageState extends ConsumerState<AccountPage> {
                       action,
                       style: AppText.body.copyWith(
                         color: destructive
-                            ? const Color(0xFFFF6B6B)
+                            ? AppColors.danger
                             : AppColors.accent,
                         fontWeight: FontWeight.w700,
                       ),
@@ -844,7 +844,7 @@ class _ListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color =
-        destructive ? const Color(0xFFFF6B6B) : AppColors.textPrimary;
+        destructive ? AppColors.danger : AppColors.textPrimary;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,

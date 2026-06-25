@@ -392,7 +392,7 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                     onPressed: () => Navigator.of(ctx).pop(true),
                     child: Text('Discard',
                         style: AppText.body.copyWith(
-                            color: const Color(0xFFFF6B6B),
+                            color: AppColors.danger,
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -501,11 +501,11 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                   child: Row(
                     children: [
                       Icon(Icons.delete_outline_rounded,
-                          size: 18, color: const Color(0xFFFF6B6B)),
+                          size: 18, color: AppColors.danger),
                       const SizedBox(width: 10),
                       Text('Discard workout',
                           style: AppText.body.copyWith(
-                              color: const Color(0xFFFF6B6B),
+                              color: AppColors.danger,
                               fontWeight: FontWeight.w700)),
                     ],
                   ),

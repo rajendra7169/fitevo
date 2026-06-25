@@ -329,7 +329,7 @@ class _MeasurementEntrySheetState extends ConsumerState<MeasurementEntrySheet> {
                   onTap: () => setState(() => _photoPath = null),
                   child: Text('Remove photo',
                       style: AppText.label.copyWith(
-                          color: const Color(0xFFFF6B6B),
+                          color: AppColors.danger,
                           letterSpacing: 0.4)),
                 ),
               ],

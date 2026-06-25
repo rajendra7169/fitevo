@@ -1207,14 +1207,14 @@ class _PlateauStrip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.08),
+        color: AppColors.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.45)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              size: 16, color: Colors.amber),
+          Icon(Icons.warning_amber_rounded,
+              size: 16, color: AppColors.warning),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

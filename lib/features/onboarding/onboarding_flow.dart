@@ -2640,15 +2640,15 @@ class _ProConsultWarning extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.10),
+        color: AppColors.warning.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.55)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.55)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.medical_information_rounded,
-              size: 18, color: Colors.amber),
+          Icon(Icons.medical_information_rounded,
+              size: 18, color: AppColors.warning),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

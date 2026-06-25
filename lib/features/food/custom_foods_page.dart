@@ -314,7 +314,7 @@ class _SheetAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = destructive
-        ? const Color(0xFFFF6B6B)
+        ? AppColors.danger
         : AppColors.textPrimary;
     return GestureDetector(
       onTap: onTap,

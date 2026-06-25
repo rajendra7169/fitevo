@@ -124,7 +124,7 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
                     child: Text(
                       'Remove',
                       style: AppText.body.copyWith(
-                        color: const Color(0xFFFF6B6B),
+                        color: AppColors.danger,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -192,7 +192,7 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
                 const SizedBox(width: 8),
                 _IconButton(
                   icon: Icons.delete_outline_rounded,
-                  color: const Color(0xFFFF6B6B),
+                  color: AppColors.danger,
                   onTap: _delete,
                 ),
               ],

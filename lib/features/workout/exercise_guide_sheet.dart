@@ -151,7 +151,7 @@ class _ExerciseGuideSheetState extends ConsumerState<ExerciseGuideSheet> {
           Text('COMMON MISTAKES', style: AppText.label),
           const SizedBox(height: 8),
           for (final m in e.commonMistakes)
-            _BulletRow(text: m, color: const Color(0xFFFF6B6B), icon: Icons.warning_amber_rounded),
+            _BulletRow(text: m, color: AppColors.danger, icon: Icons.warning_amber_rounded),
         ],
         const SizedBox(height: 20),
         Container(

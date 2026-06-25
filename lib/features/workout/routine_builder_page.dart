@@ -592,7 +592,7 @@ class _DayEditor extends StatelessWidget {
                   IconButton(
                     onPressed: onDelete,
                     icon: Icon(Icons.delete_outline_rounded,
-                        size: 18, color: const Color(0xFFFF6B6B)),
+                        size: 18, color: AppColors.danger),
                   ),
               ],
             ),

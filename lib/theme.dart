@@ -9,6 +9,7 @@ class AppPalette {
   final Color stroke;
   final Color accent;
   final Color accentDim;
+  final Color accentSoft; // tinted background for chips/cards
   final Color calorieFrom;
   final Color calorieTo;
   final Color protein;
@@ -20,6 +21,10 @@ class AppPalette {
   final Color textSecondary;
   final Color textTertiary;
   final Color streak;
+  // Semantic
+  final Color success;
+  final Color warning;
+  final Color danger;
 
   const AppPalette({
     required this.brightness,
@@ -29,6 +34,7 @@ class AppPalette {
     required this.stroke,
     required this.accent,
     required this.accentDim,
+    required this.accentSoft,
     required this.calorieFrom,
     required this.calorieTo,
     required this.protein,
@@ -40,49 +46,70 @@ class AppPalette {
     required this.textSecondary,
     required this.textTertiary,
     required this.streak,
+    required this.success,
+    required this.warning,
+    required this.danger,
   });
 }
 
+// ============================================================================
+// SAFFRON + CREAM brand
+//   - Saffron #C8501B  primary CTA on light; lifts to #E8702C on dark
+//   - Cream #FAF5EC    warm paper background on light
+//   - Warm dark surfaces (not pure black) — candle-lit, not OLED
+//   - Gold reserved for premium / earned moments (use sparingly)
+//   - Danger pushed away from Saffron so destructive ≠ primary
+//   - Indigo brightened on dark so it doesn't disappear
+// ============================================================================
+
 const AppPalette darkPalette = AppPalette(
   brightness: Brightness.dark,
-  bg: Color(0xFF0A0A0F),
-  surface: Color(0xFF15151E),
-  surfaceHigh: Color(0xFF1E1E29),
-  stroke: Color(0xFF26262F),
-  accent: Color(0xFFC8FF3D),
-  accentDim: Color(0xFF6E8C22),
-  calorieFrom: Color(0xFFFF8A3D),
-  calorieTo: Color(0xFFFF4D8F),
-  protein: Color(0xFF00E5A0),
-  carbs: Color(0xFFFFB339),
-  fat: Color(0xFFFF6B9D),
-  water: Color(0xFF4ECBFF),
-  fiber: Color(0xFFB48BFF),
-  textPrimary: Color(0xFFFFFFFF),
-  textSecondary: Color(0xFF8F8F9C),
-  textTertiary: Color(0xFF55555F),
-  streak: Color(0xFFFFA63D),
+  bg: Color(0xFF12100E),
+  surface: Color(0xFF1B1916),
+  surfaceHigh: Color(0xFF25221E),
+  stroke: Color(0xFF2F2B25),
+  accent: Color(0xFFE8702C), // Saffron lifted for dark contrast
+  accentDim: Color(0xFF8A4318),
+  accentSoft: Color(0xFF2A1F18), // tinted chip bg
+  calorieFrom: Color(0xFFE8702C), // saffron
+  calorieTo: Color(0xFFC9A64A), // gold
+  protein: Color(0xFF6BA66B), // leaf, brightened for dark
+  carbs: Color(0xFFC9A64A), // gold
+  fat: Color(0xFFB5697A), // berry-soft
+  water: Color(0xFF6B86C9), // indigo brightened so it shows on dark
+  fiber: Color(0xFFB48BCF), // muted plum
+  textPrimary: Color(0xFFF4ECDD), // warm paper
+  textSecondary: Color(0xFFC7BFB0), // warm soft
+  textTertiary: Color(0xFF7A7367), // warm muted
+  streak: Color(0xFFE8B65A), // gold-orange
+  success: Color(0xFF6BA66B), // leaf
+  warning: Color(0xFFC9A64A), // gold
+  danger: Color(0xFFE45656), // distinct from saffron (cooler red)
 );
 
 const AppPalette lightPalette = AppPalette(
   brightness: Brightness.light,
-  bg: Color(0xFFF7F7F2),
-  surface: Color(0xFFFFFFFF),
-  surfaceHigh: Color(0xFFEFEFEA),
-  stroke: Color(0xFFE2E2DA),
-  accent: Color(0xFF8FBE0E),
-  accentDim: Color(0xFFB8E22B),
-  calorieFrom: Color(0xFFE6722D),
-  calorieTo: Color(0xFFE63D7D),
-  protein: Color(0xFF00B57F),
-  carbs: Color(0xFFCC8200),
-  fat: Color(0xFFD9527E),
-  water: Color(0xFF1E9AE0),
-  fiber: Color(0xFF8A5DD6),
-  textPrimary: Color(0xFF0A0A0F),
-  textSecondary: Color(0xFF55555F),
-  textTertiary: Color(0xFF9B9BA8),
-  streak: Color(0xFFE07A1A),
+  bg: Color(0xFFFAF5EC), // cream
+  surface: Color(0xFFFFFFFF), // paper
+  surfaceHigh: Color(0xFFF2EADA), // cream deep
+  stroke: Color(0xFFE8DFCC), // line
+  accent: Color(0xFFC8501B), // saffron
+  accentDim: Color(0xFFA33A0D), // saffron deep (pressed)
+  accentSoft: Color(0xFFFCE9D9), // saffron soft (chip bg)
+  calorieFrom: Color(0xFFC8501B), // saffron
+  calorieTo: Color(0xFFC9A64A), // gold
+  protein: Color(0xFF4A7A4A), // leaf
+  carbs: Color(0xFFB47A1A), // gold-deep for legibility on cream
+  fat: Color(0xFF8B2E3F), // berry
+  water: Color(0xFF1F2E5A), // indigo
+  fiber: Color(0xFF6B4798), // plum-deep
+  textPrimary: Color(0xFF1C1915), // ink
+  textSecondary: Color(0xFF3A332A), // ink soft
+  textTertiary: Color(0xFF8A8276), // muted
+  streak: Color(0xFFA33A0D), // saffron deep
+  success: Color(0xFF3F7A4A),
+  warning: Color(0xFFB47A1A),
+  danger: Color(0xFFC73030), // distinctly redder than saffron
 );
 
 class AppColors {
@@ -96,6 +123,7 @@ class AppColors {
   static Color get stroke => _palette.stroke;
   static Color get accent => _palette.accent;
   static Color get accentDim => _palette.accentDim;
+  static Color get accentSoft => _palette.accentSoft;
   static Color get calorieFrom => _palette.calorieFrom;
   static Color get calorieTo => _palette.calorieTo;
   static Color get protein => _palette.protein;
@@ -107,6 +135,9 @@ class AppColors {
   static Color get textSecondary => _palette.textSecondary;
   static Color get textTertiary => _palette.textTertiary;
   static Color get streak => _palette.streak;
+  static Color get success => _palette.success;
+  static Color get warning => _palette.warning;
+  static Color get danger => _palette.danger;
 }
 
 ThemeData buildAppTheme(AppPalette palette) {

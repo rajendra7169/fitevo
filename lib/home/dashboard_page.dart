@@ -806,21 +806,29 @@ class _RingPainter extends CustomPainter {
     canvas.drawArc(rect, -math.pi / 2, sweep, false, fg);
   }
 
-  /// Smoothly interpolates from leaf-green (no calories consumed) →
-  /// gold (mid) → saffron (near target) → berry-red (over target).
-  /// Pulls colors from AppColors so dark mode looks correct too.
+  /// Status color:
+  ///   0 – 0.65   → solid leaf-green (you have room)
+  ///   0.65 – 0.9 → green lerping to gold (getting close)
+  ///   0.9 – 1.0  → gold lerping to saffron (near target)
+  ///   1.0 – 1.15 → saffron lerping to berry-red (over)
+  ///   1.15+      → solid danger-red
+  ///
+  /// Keeping green solid through the 65% mark stops the "everything
+  /// looks olive" issue — lerping success→warning earlier landed in
+  /// the muddy mid-zone for most realistic progress values.
   static Color _statusColor(double progress) {
-    if (progress <= 0.5) {
-      return Color.lerp(
-          AppColors.success, AppColors.warning, progress * 2)!;
-    }
+    if (progress <= 0.65) return AppColors.success;
     if (progress <= 0.9) {
-      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
-          (progress - 0.5) / 0.4)!;
+      return Color.lerp(AppColors.success, AppColors.warning,
+          (progress - 0.65) / 0.25)!;
     }
-    if (progress <= 1.2) {
+    if (progress <= 1.0) {
+      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
+          (progress - 0.9) / 0.1)!;
+    }
+    if (progress <= 1.15) {
       return Color.lerp(AppColors.calorieFrom, AppColors.danger,
-          (progress - 0.9) / 0.3)!;
+          (progress - 1.0) / 0.15)!;
     }
     return AppColors.danger;
   }
@@ -1095,12 +1103,26 @@ class _WaterChipState extends ConsumerState<_WaterChip>
   Animation<double>? _levelAnim;
   double _shownProgress = 0;
   final GlobalKey _chipKey = GlobalKey();
+  // Set at mount by reading the persisted flag. Gates all celebration
+  // triggers in this session so the burst can't fire twice on the same
+  // calendar day, even if the async data-load chain detects a "false
+  // crossing" (0 → real value > 1.0) right after restart.
+  bool _alreadyCelebratedToday = false;
 
   @override
   void initState() {
     super.initState();
     _shownProgress = widget.progress;
     if (_shownProgress >= 1.0) _wave.stop();
+    // Read the persisted "celebrated today" flag once on mount so we
+    // can gate the burst without racing the async crossing detection.
+    SharedPreferences.getInstance().then((prefs) {
+      if (!mounted) return;
+      final last = prefs.getString('waterCelebratedDate');
+      if (last == _todayKey()) {
+        setState(() => _alreadyCelebratedToday = true);
+      }
+    });
     _levelCtl.addListener(() {
       final v = _levelAnim?.value;
       if (v != null && v != _shownProgress) {
@@ -1133,7 +1155,9 @@ class _WaterChipState extends ConsumerState<_WaterChip>
       // from 0 → real value, which looks like a "crossing" to this
       // logic. Without the persisted flag, the user would see the
       // celebration every time they reopen the app.
-      if (old.progress < 1.0 && widget.progress >= 1.0) {
+      if (old.progress < 1.0 &&
+          widget.progress >= 1.0 &&
+          !_alreadyCelebratedToday) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _maybeCelebrate();
         });
@@ -1152,13 +1176,20 @@ class _WaterChipState extends ConsumerState<_WaterChip>
   /// key. This is what keeps the burst from re-firing every time the
   /// user reopens the app on a day they already hit the goal.
   Future<void> _maybeCelebrate() async {
+    if (_alreadyCelebratedToday) return;
     const prefsKey = 'waterCelebratedDate';
     final prefs = await SharedPreferences.getInstance();
     final last = prefs.getString(prefsKey);
     final today = _todayKey();
-    if (last == today) return;
+    if (last == today) {
+      // Flag was already written this calendar day. Just remember it
+      // in memory so we don't re-check from disk later this session.
+      if (mounted) setState(() => _alreadyCelebratedToday = true);
+      return;
+    }
     await prefs.setString(prefsKey, today);
     if (!mounted) return;
+    setState(() => _alreadyCelebratedToday = true);
     _showCelebration();
   }
 

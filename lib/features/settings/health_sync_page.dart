@@ -97,7 +97,7 @@ class _HealthSyncPageState extends ConsumerState<HealthSyncPage> {
           data: Theme.of(ctx).copyWith(
             colorScheme: Theme.of(ctx).colorScheme.copyWith(
                   primary: AppColors.accent,
-                  onPrimary: Colors.black,
+                  onPrimary: AppColors.onAccent,
                   surface: AppColors.surface,
                   onSurface: AppColors.textPrimary,
                 ),

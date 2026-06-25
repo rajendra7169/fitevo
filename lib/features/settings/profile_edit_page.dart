@@ -1176,7 +1176,7 @@ class _RowSegment<T> extends StatelessWidget {
                 child: Text(
                   o.$2,
                   style: TextStyle(
-                    color: active ? Colors.black : AppColors.textPrimary,
+                    color: active ? AppColors.onAccent : AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),
@@ -1288,7 +1288,7 @@ class _TimeField extends StatelessWidget {
           data: Theme.of(ctx).copyWith(
             colorScheme: Theme.of(ctx).colorScheme.copyWith(
                   primary: AppColors.accent,
-                  onPrimary: Colors.black,
+                  onPrimary: AppColors.onAccent,
                   surface: AppColors.surface,
                   onSurface: AppColors.textPrimary,
                 ),
@@ -1749,7 +1749,7 @@ class _GoesGymToggle extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(label,
                 style: TextStyle(
-                  color: selected ? Colors.black : AppColors.textPrimary,
+                  color: selected ? AppColors.onAccent : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 )),

@@ -100,7 +100,7 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
           data: Theme.of(ctx).copyWith(
             colorScheme: Theme.of(ctx).colorScheme.copyWith(
                   primary: AppColors.accent,
-                  onPrimary: Colors.black,
+                  onPrimary: AppColors.onAccent,
                   surface: AppColors.surface,
                   onSurface: AppColors.textPrimary,
                 ),
@@ -307,7 +307,7 @@ class _PillButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : AppColors.textPrimary,
+            color: selected ? AppColors.onAccent : AppColors.textPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 13,
             letterSpacing: -0.1,

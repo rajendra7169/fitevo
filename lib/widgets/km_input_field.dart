@@ -200,7 +200,7 @@ class _UnitToggle extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : AppColors.textPrimary,
+            color: selected ? AppColors.onAccent : AppColors.textPrimary,
             fontSize: 11,
             fontWeight: FontWeight.w800,
           ),

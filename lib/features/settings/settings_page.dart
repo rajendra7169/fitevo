@@ -577,7 +577,7 @@ class _UnitOption extends StatelessWidget {
           children: [
             Text(label,
                 style: TextStyle(
-                  color: selected ? Colors.black : AppColors.textPrimary,
+                  color: selected ? AppColors.onAccent : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
                   letterSpacing: -0.2,
@@ -586,7 +586,7 @@ class _UnitOption extends StatelessWidget {
             Text(sub,
                 style: TextStyle(
                   color: selected
-                      ? Colors.black.withValues(alpha: 0.6)
+                      ? AppColors.onAccent.withValues(alpha: 0.7)
                       : AppColors.textTertiary,
                   fontWeight: FontWeight.w600,
                   fontSize: 10,
@@ -627,12 +627,12 @@ class _ModeOption extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 18,
-                color: selected ? Colors.black : AppColors.textPrimary),
+                color: selected ? AppColors.onAccent : AppColors.textPrimary),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.black : AppColors.textPrimary,
+                color: selected ? AppColors.onAccent : AppColors.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 letterSpacing: -0.2,

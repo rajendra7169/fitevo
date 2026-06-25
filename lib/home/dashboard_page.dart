@@ -1893,52 +1893,97 @@ class _WaterCelebrationState extends State<_WaterCelebration>
                   ),
                 ),
               ),
-              // Hero text near the center of the screen
+              // Hero card near the center of the screen.
+              // Material wrapper + explicit `decoration: TextDecoration.none`
+              // because the OverlayEntry sits outside Material, otherwise
+              // Flutter shows the debug-yellow text underlines.
               Center(
-                child: Opacity(
-                  opacity: textOpacity,
-                  child: Transform.scale(
-                    scale: textScale,
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: AppColors.water.withValues(alpha: 0.4),
-                          width: 1.5,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Opacity(
+                    opacity: textOpacity,
+                    child: Transform.scale(
+                      scale: textScale,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppColors.water.withValues(alpha: 0.4),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.water.withValues(alpha: 0.25),
+                              blurRadius: 28,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.water.withValues(alpha: 0.25),
-                            blurRadius: 28,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('💧',
-                              style: TextStyle(fontSize: 48)),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Hydration goal!',
-                            style: AppText.giantNumber.copyWith(
-                              fontSize: 26,
-                              color: AppColors.water,
-                              letterSpacing: -0.6,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Cluster of water drops. Main one in the
+                            // center, three smaller satellites at varied
+                            // heights for a playful "splash" feel.
+                            SizedBox(
+                              width: 110,
+                              height: 58,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Positioned(
+                                    left: 10,
+                                    top: 22,
+                                    child: Icon(Icons.water_drop_rounded,
+                                        size: 14,
+                                        color: AppColors.water
+                                            .withValues(alpha: 0.55)),
+                                  ),
+                                  Positioned(
+                                    right: 8,
+                                    top: 10,
+                                    child: Icon(Icons.water_drop_rounded,
+                                        size: 18,
+                                        color: AppColors.water
+                                            .withValues(alpha: 0.70)),
+                                  ),
+                                  Positioned(
+                                    right: 22,
+                                    bottom: 6,
+                                    child: Icon(Icons.water_drop_rounded,
+                                        size: 11,
+                                        color: AppColors.water
+                                            .withValues(alpha: 0.50)),
+                                  ),
+                                  Icon(Icons.water_drop_rounded,
+                                      size: 44,
+                                      color: AppColors.water),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Great job — keep flowing.',
-                            style: AppText.body.copyWith(
-                              fontSize: 13,
-                              color: AppColors.textPrimary,
+                            const SizedBox(height: 6),
+                            Text(
+                              'Hydration goal!',
+                              style: AppText.giantNumber.copyWith(
+                                fontSize: 26,
+                                color: AppColors.water,
+                                letterSpacing: -0.6,
+                                decoration: TextDecoration.none,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            Text(
+                              'Great job — keep flowing.',
+                              style: AppText.body.copyWith(
+                                fontSize: 13,
+                                color: AppColors.textPrimary,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

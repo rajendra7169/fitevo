@@ -791,68 +791,62 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Journey gradient: arc starts green (where you began the day) and
-    // transitions through gold / saffron / red based on how far through
-    // the day's consumption you've gotten. Each zone boundary is mapped
-    // to its actual position on the visible arc, so a 60% ring shows
-    // green near the 12 o'clock start and ends in gold-toward-saffron.
-    final p = progress.clamp(0.0001, 2.0);
-    final sweep = 2 * math.pi * p.clamp(0.0, 1.0);
+    // Apple-Watch-style ring: a single yellow→dark gradient that
+    // darkens as the arc grows. When the user exceeds the target the
+    // overflow draws as a SECOND pass on top of the first lap, with
+    // a soft drop shadow underneath so you see the rings overlap.
+    if (progress <= 0) return;
 
-    final colors = <Color>[AppColors.success];
-    final stops = <double>[0.0];
-    void addStop(double threshold, Color color) {
-      if (p > threshold) {
-        colors.add(color);
-        stops.add(threshold / p);
-      }
-    }
-    addStop(0.30, AppColors.success);
-    addStop(0.60, AppColors.warning);
-    addStop(0.85, AppColors.calorieFrom);
-    addStop(1.0, AppColors.danger);
-    // Final stop at 1.0 = the current zone color (computed by the
-    // same _statusColor function so the end of the arc precisely matches
-    // the user's current "where am I" status).
-    colors.add(_statusColor(p));
-    stops.add(1.0);
-
-    final fg = Paint()
+    // -------- First lap (0 → min(progress, 1.0)) --------
+    final primaryFraction = math.min(progress, 1.0);
+    final primarySweep = 2 * math.pi * primaryFraction;
+    final primaryPaint = Paint()
       ..shader = SweepGradient(
         startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + sweep,
-        colors: colors,
-        stops: stops,
+        endAngle: -math.pi / 2 + primarySweep,
+        colors: [
+          AppColors.warning,      // bright gold at the start
+          AppColors.calorieFrom,  // deeper saffron at the tip
+        ],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, -math.pi / 2, primarySweep, false, primaryPaint);
 
-    canvas.drawArc(rect, -math.pi / 2, sweep, false, fg);
-  }
+    // -------- Overflow (a second pass on top of the first lap) --------
+    if (progress > 1.0) {
+      final overflowFraction = (progress - 1.0).clamp(0.0, 1.0);
+      final overflowSweep = 2 * math.pi * overflowFraction;
 
-  /// Status color, tightened so the user sees the transition by the
-  /// halfway mark instead of staying green until ~65%.
-  ///   0 – 0.30   → solid leaf-green (lots of room)
-  ///   0.30 – 0.60 → green lerping to gold (mid-day pacing)
-  ///   0.60 – 0.85 → gold lerping to saffron (getting close)
-  ///   0.85 – 1.0  → saffron lerping to berry-red (almost / hit target)
-  ///   1.0+         → solid danger-red (over target)
-  static Color _statusColor(double progress) {
-    if (progress <= 0.30) return AppColors.success;
-    if (progress <= 0.60) {
-      return Color.lerp(AppColors.success, AppColors.warning,
-          (progress - 0.30) / 0.30)!;
+      // Soft shadow under the overflow ring so the visual "stacking"
+      // reads — mimics Apple Watch's exceeded-goal effect.
+      final shadow = Paint()
+        ..color = Colors.black.withValues(alpha: 0.30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth + 1
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+      canvas.drawArc(rect, -math.pi / 2, overflowSweep, false, shadow);
+
+      // The overflow stroke itself — starts deep saffron (continuing
+      // visually from the end of the first lap) and lerps toward
+      // danger-red the further past target you go.
+      final overflowPaint = Paint()
+        ..shader = SweepGradient(
+          startAngle: -math.pi / 2,
+          endAngle: -math.pi / 2 + overflowSweep,
+          colors: [
+            AppColors.calorieFrom,
+            AppColors.danger,
+          ],
+        ).createShader(rect)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+          rect, -math.pi / 2, overflowSweep, false, overflowPaint);
     }
-    if (progress <= 0.85) {
-      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
-          (progress - 0.60) / 0.25)!;
-    }
-    if (progress <= 1.0) {
-      return Color.lerp(AppColors.calorieFrom, AppColors.danger,
-          (progress - 0.85) / 0.15)!;
-    }
-    return AppColors.danger;
   }
 
   @override

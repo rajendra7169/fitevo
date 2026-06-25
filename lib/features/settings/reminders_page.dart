@@ -70,6 +70,9 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         intervalHours: _waterInterval,
         startHour: startHour,
         endHour: endHour,
+        wakeMin: profile?.wakeTimeMin,
+        sleepMin: profile?.sleepTimeMin,
+        mealTimesMin: _mealEnabled ? _mealTimes : const [],
       );
     } else {
       await notif.cancelWaterReminders();

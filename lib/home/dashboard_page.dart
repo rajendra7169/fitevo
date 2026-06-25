@@ -18,6 +18,7 @@ import '../data/repositories/nutrition_repo.dart';
 import '../features/account/account_page.dart';
 import '../features/food/meal_actions_sheet.dart';
 import '../features/food/nutrient_detail_page.dart';
+import '../features/food/water_detail_page.dart';
 import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
@@ -974,18 +975,10 @@ class _WaterFiberChips extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: _StatChip(
-            icon: Icons.water_drop_rounded,
-            label: 'Water',
-            value: (totals.waterMl / 1000).toStringAsFixed(1),
-            of: '${(waterTargetMl / 1000).toStringAsFixed(1)}L',
+          child: _WaterChip(
+            consumedMl: totals.waterMl,
+            targetMl: waterTargetMl,
             progress: waterProgress.clamp(0.0, 1.0),
-            color: AppColors.water,
-            isAddAction: true,
-            onTap: () async {
-              final today = ref.read(todayProvider);
-              await ref.read(nutritionRepoProvider).addWater(today, 250);
-            },
           ),
         ),
         const SizedBox(width: 8),
@@ -1027,6 +1020,242 @@ class _WaterFiberChips extends ConsumerWidget {
   }
 }
 
+/// Water chip on the dashboard. Tap = quick-add 250ml (with a wave
+/// fill animation + a floating "+250ml" hint). Long-press opens the
+/// full WaterDetailPage with timeline + smart reminders.
+class _WaterChip extends ConsumerStatefulWidget {
+  final int consumedMl;
+  final int targetMl;
+  final double progress;
+  const _WaterChip({
+    required this.consumedMl,
+    required this.targetMl,
+    required this.progress,
+  });
+
+  @override
+  ConsumerState<_WaterChip> createState() => _WaterChipState();
+}
+
+class _WaterChipState extends ConsumerState<_WaterChip>
+    with TickerProviderStateMixin {
+  late final AnimationController _tap = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  late final AnimationController _wave = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _tap.dispose();
+    _wave.dispose();
+    super.dispose();
+  }
+
+  Future<void> _add() async {
+    _tap.forward(from: 0);
+    await ref
+        .read(nutritionRepoProvider)
+        .addWater(ref.read(todayProvider), 250);
+  }
+
+  void _openDetail() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const WaterDetailPage()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _add,
+      onLongPress: _openDetail,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_tap, _wave]),
+        builder: (ctx, _) {
+          // Brief scale pulse on tap so the user knows the tap registered.
+          final pulse = 1.0 -
+              0.04 *
+                  (math.sin(_tap.value * math.pi).clamp(0.0, 1.0));
+          // Floating "+250ml" hint rises and fades after a tap.
+          final hintT = _tap.value;
+          return Transform.scale(
+            scale: pulse,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                children: [
+                  // Base chip
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.stroke, width: 1),
+                    ),
+                  ),
+                  // Wave fill background — height = progress, animated drift
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _WaterWavePainter(
+                        progress: widget.progress,
+                        wavePhase: _wave.value * 2 * math.pi,
+                        color: AppColors.water,
+                      ),
+                    ),
+                  ),
+                  // Content layer
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: AppColors.water
+                                    .withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.water_drop_rounded,
+                                  size: 14, color: AppColors.water),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Water',
+                                style: AppText.meta.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textTertiary,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ),
+                            Icon(Icons.add_rounded,
+                                size: 14, color: AppColors.water),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text:
+                                      (widget.consumedMl / 1000).toStringAsFixed(1),
+                                  style: AppText.bigNumber.copyWith(fontSize: 18),
+                                ),
+                                TextSpan(
+                                  text:
+                                      ' /${(widget.targetMl / 1000).toStringAsFixed(1)}L',
+                                  style: AppText.meta.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.textTertiary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Floating "+250ml" hint after tap
+                  if (hintT > 0 && hintT < 1)
+                    Positioned(
+                      right: 10,
+                      top: 6 - (12 * hintT),
+                      child: Opacity(
+                        opacity: (1 - hintT).clamp(0.0, 1.0),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.water,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '+250ml',
+                            style: TextStyle(
+                              color: AppColors.onAccent,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Animated water-level inside the chip. The water surface is a low-
+/// amplitude sine wave that drifts continuously; height = progress.
+class _WaterWavePainter extends CustomPainter {
+  final double progress;
+  final double wavePhase;
+  final Color color;
+
+  _WaterWavePainter({
+    required this.progress,
+    required this.wavePhase,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final waterLevel =
+        size.height * (1 - progress.clamp(0.0, 1.0)); // y of surface
+    final amplitude = 2.5; // px
+    final wavelength = size.width;
+
+    final path = Path()..moveTo(0, size.height);
+    path.lineTo(0, waterLevel);
+    for (var x = 0.0; x <= size.width; x += 4) {
+      final y = waterLevel +
+          amplitude *
+              math.sin((x / wavelength) * 2 * math.pi + wavePhase);
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.22),
+          color.withValues(alpha: 0.08),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_WaterWavePainter old) =>
+      old.progress != progress ||
+      old.wavePhase != wavePhase ||
+      old.color != color;
+}
+
 class _StatChip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1035,7 +1264,6 @@ class _StatChip extends StatelessWidget {
   final double progress;
   final Color color;
   final VoidCallback? onTap;
-  final bool isAddAction;
 
   const _StatChip({
     required this.icon,
@@ -1045,7 +1273,6 @@ class _StatChip extends StatelessWidget {
     required this.progress,
     required this.color,
     this.onTap,
-    this.isAddAction = false,
   });
 
   @override
@@ -1087,9 +1314,7 @@ class _StatChip extends StatelessWidget {
                 ),
                 if (onTap != null)
                   Icon(
-                    isAddAction
-                        ? Icons.add_rounded
-                        : Icons.chevron_right_rounded,
+                    Icons.chevron_right_rounded,
                     size: 14,
                     color: color,
                   ),

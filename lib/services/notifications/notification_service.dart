@@ -72,24 +72,68 @@ class NotificationService {
         priority: Priority.defaultPriority,
       );
 
-  /// Schedules water reminders every [intervalHours] between [startHour] and
-  /// [endHour], for the next 7 days.
+  /// Schedules water reminders every [intervalHours] within the awake
+  /// window, with three smart guards:
+  ///
+  ///   1. **Bedtime buffer.** Reminders stop [bedtimeBufferMin] minutes
+  ///      before sleep so the user isn't woken up by a full bladder.
+  ///   2. **Meal-window skip.** Around each meal time in [mealTimesMin]
+  ///      we suppress reminders from [mealBeforeMin] before to
+  ///      [mealAfterMin] after — chugging water during/right after a
+  ///      meal can dilute stomach acid and delay digestion.
+  ///   3. **Awake-only.** Reminders never fire before [wakeMin] or
+  ///      after [sleepMin] − bedtimeBufferMin.
+  ///
+  /// Times are in minute-of-day (0..1439). When wake/sleep aren't
+  /// provided we fall back to the legacy [startHour]/[endHour] window.
   Future<void> scheduleWaterReminders({
     required int intervalHours,
     int startHour = 8,
     int endHour = 21,
+    int? wakeMin,
+    int? sleepMin,
+    List<int> mealTimesMin = const [],
+    int mealBeforeMin = 20,
+    int mealAfterMin = 45,
+    int bedtimeBufferMin = 60,
   }) async {
     await init();
     if (kIsWeb) return;
     await cancelWaterReminders();
     if (intervalHours <= 0) return;
+
+    // Derive the awake window in minute-of-day. Wake/sleep wins when set.
+    final startMod = wakeMin ?? (startHour * 60);
+    final endMod =
+        (sleepMin != null ? sleepMin - bedtimeBufferMin : endHour * 60)
+            .clamp(0, 1439);
+
+    if (endMod <= startMod) return;
+
+    // Build skip windows around meal times.
+    final skips = <(int, int)>[
+      for (final m in mealTimesMin)
+        ((m - mealBeforeMin).clamp(0, 1439), (m + mealAfterMin).clamp(0, 1439))
+    ];
+
+    bool insideSkip(int mod) {
+      for (final (s, e) in skips) {
+        if (mod >= s && mod <= e) return true;
+      }
+      return false;
+    }
+
     final now = tz.TZDateTime.now(tz.local);
     var id = _waterIdStart;
+    final stepMin = intervalHours * 60;
     for (var day = 0; day < 7; day++) {
       final base = now.add(Duration(days: day));
-      for (var h = startHour; h <= endHour; h += intervalHours) {
-        var fire =
-            tz.TZDateTime(tz.local, base.year, base.month, base.day, h);
+      for (var mod = startMod; mod <= endMod; mod += stepMin) {
+        if (insideSkip(mod)) continue;
+        final h = mod ~/ 60;
+        final m = mod % 60;
+        final fire =
+            tz.TZDateTime(tz.local, base.year, base.month, base.day, h, m);
         if (fire.isBefore(now)) continue;
         await _plugin.zonedSchedule(
           id++,

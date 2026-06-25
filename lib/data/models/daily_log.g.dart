@@ -67,8 +67,14 @@ const DailyLogSchema = CollectionSchema(
       name: r'walkingKmToday',
       type: IsarType.double,
     ),
-    r'waterMl': PropertySchema(
+    r'waterEntries': PropertySchema(
       id: 10,
+      name: r'waterEntries',
+      type: IsarType.objectList,
+      target: r'WaterEntry',
+    ),
+    r'waterMl': PropertySchema(
+      id: 11,
       name: r'waterMl',
       type: IsarType.long,
     )
@@ -94,7 +100,7 @@ const DailyLogSchema = CollectionSchema(
     )
   },
   links: {},
-  embeddedSchemas: {},
+  embeddedSchemas: {r'WaterEntry': WaterEntrySchema},
   getId: _dailyLogGetId,
   getLinks: _dailyLogGetLinks,
   attach: _dailyLogAttach,
@@ -114,6 +120,14 @@ int _dailyLogEstimateSize(
     }
   }
   bytesCount += 3 + object.dateKey.length * 3;
+  bytesCount += 3 + object.waterEntries.length * 3;
+  {
+    final offsets = allOffsets[WaterEntry]!;
+    for (var i = 0; i < object.waterEntries.length; i++) {
+      final value = object.waterEntries[i];
+      bytesCount += WaterEntrySchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
   return bytesCount;
 }
 
@@ -133,7 +147,13 @@ void _dailyLogSerialize(
   writer.writeLong(offsets[7], object.steps);
   writer.writeDateTime(offsets[8], object.updatedAt);
   writer.writeDouble(offsets[9], object.walkingKmToday);
-  writer.writeLong(offsets[10], object.waterMl);
+  writer.writeObjectList<WaterEntry>(
+    offsets[10],
+    allOffsets,
+    WaterEntrySchema.serialize,
+    object.waterEntries,
+  );
+  writer.writeLong(offsets[11], object.waterMl);
 }
 
 DailyLog _dailyLogDeserialize(
@@ -154,7 +174,14 @@ DailyLog _dailyLogDeserialize(
   object.steps = reader.readLongOrNull(offsets[7]);
   object.updatedAt = reader.readDateTime(offsets[8]);
   object.walkingKmToday = reader.readDouble(offsets[9]);
-  object.waterMl = reader.readLong(offsets[10]);
+  object.waterEntries = reader.readObjectList<WaterEntry>(
+        offsets[10],
+        WaterEntrySchema.deserialize,
+        allOffsets,
+        WaterEntry(),
+      ) ??
+      [];
+  object.waterMl = reader.readLong(offsets[11]);
   return object;
 }
 
@@ -186,6 +213,14 @@ P _dailyLogDeserializeProp<P>(
     case 9:
       return (reader.readDouble(offset)) as P;
     case 10:
+      return (reader.readObjectList<WaterEntry>(
+            offset,
+            WaterEntrySchema.deserialize,
+            allOffsets,
+            WaterEntry(),
+          ) ??
+          []) as P;
+    case 11:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1215,6 +1250,95 @@ extension DailyLogQueryFilter
     });
   }
 
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition>
+      waterEntriesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'waterEntries',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> waterMlEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -1270,7 +1394,14 @@ extension DailyLogQueryFilter
 }
 
 extension DailyLogQueryObject
-    on QueryBuilder<DailyLog, DailyLog, QFilterCondition> {}
+    on QueryBuilder<DailyLog, DailyLog, QFilterCondition> {
+  QueryBuilder<DailyLog, DailyLog, QAfterFilterCondition> waterEntriesElement(
+      FilterQuery<WaterEntry> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'waterEntries');
+    });
+  }
+}
 
 extension DailyLogQueryLinks
     on QueryBuilder<DailyLog, DailyLog, QFilterCondition> {}
@@ -1697,9 +1828,206 @@ extension DailyLogQueryProperty
     });
   }
 
+  QueryBuilder<DailyLog, List<WaterEntry>, QQueryOperations>
+      waterEntriesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'waterEntries');
+    });
+  }
+
   QueryBuilder<DailyLog, int, QQueryOperations> waterMlProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'waterMl');
     });
   }
 }
+
+// **************************************************************************
+// IsarEmbeddedGenerator
+// **************************************************************************
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const WaterEntrySchema = Schema(
+  name: r'WaterEntry',
+  id: 7610063248208069204,
+  properties: {
+    r'minutesOfDay': PropertySchema(
+      id: 0,
+      name: r'minutesOfDay',
+      type: IsarType.long,
+    ),
+    r'ml': PropertySchema(
+      id: 1,
+      name: r'ml',
+      type: IsarType.long,
+    )
+  },
+  estimateSize: _waterEntryEstimateSize,
+  serialize: _waterEntrySerialize,
+  deserialize: _waterEntryDeserialize,
+  deserializeProp: _waterEntryDeserializeProp,
+);
+
+int _waterEntryEstimateSize(
+  WaterEntry object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  return bytesCount;
+}
+
+void _waterEntrySerialize(
+  WaterEntry object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeLong(offsets[0], object.minutesOfDay);
+  writer.writeLong(offsets[1], object.ml);
+}
+
+WaterEntry _waterEntryDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = WaterEntry();
+  object.minutesOfDay = reader.readLong(offsets[0]);
+  object.ml = reader.readLong(offsets[1]);
+  return object;
+}
+
+P _waterEntryDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readLong(offset)) as P;
+    case 1:
+      return (reader.readLong(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension WaterEntryQueryFilter
+    on QueryBuilder<WaterEntry, WaterEntry, QFilterCondition> {
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition>
+      minutesOfDayEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'minutesOfDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition>
+      minutesOfDayGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'minutesOfDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition>
+      minutesOfDayLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'minutesOfDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition>
+      minutesOfDayBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'minutesOfDay',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition> mlEqualTo(
+      int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'ml',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition> mlGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'ml',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition> mlLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'ml',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WaterEntry, WaterEntry, QAfterFilterCondition> mlBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'ml',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+}
+
+extension WaterEntryQueryObject
+    on QueryBuilder<WaterEntry, WaterEntry, QFilterCondition> {}

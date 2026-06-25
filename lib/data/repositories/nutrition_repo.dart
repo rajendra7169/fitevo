@@ -231,9 +231,32 @@ class NutritionRepo {
     return '${s.toStringAsFixed(1)}×';
   }
 
-  Future<void> addWater(DateTime date, int ml) async {
+  /// Add water with a timestamp. Records a WaterEntry AND increments the
+  /// aggregate waterMl so existing dashboard queries keep working.
+  /// The timestamp defaults to the current minute-of-day.
+  Future<void> addWater(DateTime date, int ml, {int? minutesOfDay}) async {
     final log = await getOrCreateLog(date);
+    final now = DateTime.now();
+    final mod = minutesOfDay ?? (now.hour * 60 + now.minute);
     log.waterMl = log.waterMl + ml;
+    log.waterEntries = List.of(log.waterEntries)
+      ..add(WaterEntry()
+        ..minutesOfDay = mod
+        ..ml = ml);
+    log.updatedAt = now;
+    await _isar.writeTxn(() async {
+      await _isar.dailyLogs.put(log);
+    });
+  }
+
+  /// Remove a specific water entry by index (timeline order) and
+  /// re-derive the total. Used by the detail page's swipe-to-delete.
+  Future<void> removeWaterEntryAt(DateTime date, int index) async {
+    final log = await getOrCreateLog(date);
+    if (index < 0 || index >= log.waterEntries.length) return;
+    final updated = List.of(log.waterEntries)..removeAt(index);
+    log.waterEntries = updated;
+    log.waterMl = updated.fold<int>(0, (s, e) => s + e.ml);
     log.updatedAt = DateTime.now();
     await _isar.writeTxn(() async {
       await _isar.dailyLogs.put(log);

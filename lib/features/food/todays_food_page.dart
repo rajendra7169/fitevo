@@ -223,17 +223,14 @@ class _MealGroupCardState extends ConsumerState<_MealGroupCard> {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.accent.withValues(alpha: 0.06),
-            AppColors.surface,
-          ],
-        ),
+        // Flat soft accent tint — matches single-meal cards in shape and
+        // border weight; the saffron wash distinguishes a multi-item
+        // meal from a single entry without shouting. Was a gradient
+        // that read as messy at small sizes.
+        color: AppColors.accent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: AppColors.accent.withValues(alpha: 0.25), width: 1.2),
+            color: AppColors.accent.withValues(alpha: 0.30), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

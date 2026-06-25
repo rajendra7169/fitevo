@@ -1261,18 +1261,18 @@ class _WaterWavePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color.withValues(alpha: 0.32),
-          color.withValues(alpha: 0.14),
+          color.withValues(alpha: 0.18),
+          color.withValues(alpha: 0.06),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawPath(path, paint);
 
-    // Subtle surface highlight — a 1px line at the wave crest so the
-    // water has a visible "top" against the chip background.
+    // Whisper-soft surface highlight so the wave crest reads as a line
+    // without screaming. Earlier 0.40 was too loud per feedback.
     final crest = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..color = color.withValues(alpha: 0.40);
+      ..strokeWidth = 0.8
+      ..color = color.withValues(alpha: 0.18);
     final crestPath = Path()..moveTo(-4, waterLevel);
     for (var x = -4.0; x <= size.width + 4; x += 4) {
       final y = waterLevel +

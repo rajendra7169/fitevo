@@ -89,13 +89,19 @@ class TodaysFoodPage extends ConsumerWidget {
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                         sliver: SliverList.builder(
                           itemCount: groups.length,
-                          itemBuilder: (_, i) {
+                          itemBuilder: (ctx, i) {
                             final g = groups[i];
+                            // Wrap each card in a Dismissible so the user
+                            // can swipe right→left to delete an accidental
+                            // entry quickly. Undo is offered via SnackBar.
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10),
-                              child: (g.length == 1
-                                      ? _FoodEntryCard(entry: g.first)
-                                      : _MealGroupCard(entries: g))
+                              child: _SwipeToDelete(
+                                entries: g,
+                                child: g.length == 1
+                                    ? _FoodEntryCard(entry: g.first)
+                                    : _MealGroupCard(entries: g),
+                              )
                                   .animate(
                                       delay: Duration(
                                           milliseconds: 140 + i * 50))
@@ -1010,5 +1016,105 @@ class _EmptyState extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Wraps a food card with swipe-to-delete + undo. The Dismissible
+/// removes the card from the list as soon as the user swipes; the
+/// actual Isar delete happens in the same tick. If they tap UNDO in
+/// the snackbar within 5 s we re-add the original entries.
+class _SwipeToDelete extends ConsumerWidget {
+  final List<FoodEntry> entries;
+  final Widget child;
+  const _SwipeToDelete({required this.entries, required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.read(nutritionRepoProvider);
+    final key = ValueKey('meal-${entries.map((e) => e.id).join('-')}');
+    return Dismissible(
+      key: key,
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) async {
+        // Snapshot BEFORE delete so undo gets a fresh detached copy.
+        final snapshots = entries.map(_clone).toList();
+        for (final e in entries) {
+          await repo.deleteFoodEntry(e.id);
+        }
+        if (!context.mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        messenger
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            backgroundColor: AppColors.surfaceHigh,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 5),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
+            content: Text(
+              entries.length == 1
+                  ? 'Removed · ${entries.first.calories} kcal'
+                  : 'Removed meal · ${entries.length} items',
+              style:
+                  AppText.body.copyWith(color: AppColors.textPrimary),
+            ),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: AppColors.accent,
+              onPressed: () async {
+                for (final s in snapshots) {
+                  await repo.addFoodEntry(s);
+                }
+              },
+            ),
+          ));
+      },
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_outline_rounded,
+                color: AppColors.danger, size: 22),
+            const SizedBox(width: 6),
+            Text('Delete',
+                style: AppText.body.copyWith(
+                  color: AppColors.danger,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                )),
+          ],
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  FoodEntry _clone(FoodEntry e) {
+    return FoodEntry()
+      ..timestamp = e.timestamp
+      ..dateKey = e.dateKey
+      ..rawInput = e.rawInput
+      ..description = e.description
+      ..quantity = e.quantity
+      ..unit = e.unit
+      ..calories = e.calories
+      ..proteinG = e.proteinG
+      ..carbsG = e.carbsG
+      ..fatG = e.fatG
+      ..fiberG = e.fiberG
+      ..sodiumMg = e.sodiumMg
+      ..source = e.source
+      ..confidence = e.confidence
+      ..caloriesLow = e.caloriesLow
+      ..caloriesHigh = e.caloriesHigh
+      ..isFavorite = e.isFavorite
+      ..photoPath = e.photoPath;
   }
 }

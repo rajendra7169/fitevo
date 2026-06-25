@@ -142,6 +142,14 @@ class ProxyAiService implements AiService {
   }
 
   FoodAnalysis _parseFoodAnalysis(Map<String, dynamic> json) {
+    // Clarification short-circuit: AI returned a single question instead
+    // of estimating because the input was ambiguous.
+    if (json['needs_clarification'] == true) {
+      final q = (json['question'] as String?)?.trim();
+      if (q != null && q.isNotEmpty) {
+        return FoodAnalysis.clarification(q);
+      }
+    }
     final items = ((json['items'] as List?) ?? const [])
         .whereType<Map>()
         .map((m) {

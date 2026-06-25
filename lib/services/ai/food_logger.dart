@@ -18,6 +18,9 @@ class FoodLogger {
 
   Future<LogResult> logFromText(String input) async {
     final analysis = await ai.analyzeFoodText(input);
+    if (analysis.needsClarification) {
+      return LogResult.clarification(analysis.clarificationQuestion!);
+    }
     return _persistAnalysis(analysis,
         rawInput: input, source: FoodSource.aiText);
   }
@@ -25,6 +28,9 @@ class FoodLogger {
   Future<LogResult> logFromPhoto(List<int> bytes,
       {String? hint, String? photoPath}) async {
     final analysis = await ai.analyzeFoodPhoto(bytes, hint: hint);
+    if (analysis.needsClarification) {
+      return LogResult.clarification(analysis.clarificationQuestion!);
+    }
     return _persistAnalysis(
       analysis,
       rawInput: hint ?? '(photo)',
@@ -105,10 +111,27 @@ class LogResult {
   final List<FoodEntry> entries;
   final int totalCalories;
   final bool hasLowConfidence;
+  /// When set, the AI asked for one short clarification instead of
+  /// estimating. No entries were persisted — the caller should show
+  /// the question and re-call logFromText with the combined input.
+  final String? clarificationQuestion;
 
   const LogResult({
     required this.entries,
     required this.totalCalories,
     required this.hasLowConfidence,
+    this.clarificationQuestion,
   });
+
+  /// Convenience constructor for a "AI asked a question" outcome.
+  /// hasLowConfidence is false; entries is empty.
+  factory LogResult.clarification(String question) => LogResult(
+        entries: const [],
+        totalCalories: 0,
+        hasLowConfidence: false,
+        clarificationQuestion: question,
+      );
+
+  bool get isClarification =>
+      clarificationQuestion != null && clarificationQuestion!.isNotEmpty;
 }

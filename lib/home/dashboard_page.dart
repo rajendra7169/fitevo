@@ -256,6 +256,14 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
 
+  // Multi-turn clarification state. When the AI asks a clarifying
+  // question, we keep the original input + each round's answer here
+  // and re-prompt with the combined string. After 3 rounds we force
+  // the AI to commit even if it still wants to ask.
+  String? _pendingQuestion;
+  String _accumulated = '';
+  int _clarifyRound = 0;
+
   @override
   void initState() {
     super.initState();
@@ -321,15 +329,40 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     if (text.isEmpty || _submitting) return;
     setState(() => _submitting = true);
     try {
+      // Build the prompt: if we're in a clarification round, append the
+      // user's new answer to whatever we've accumulated so far.
+      final combinedInput = _accumulated.isEmpty
+          ? text
+          : '$_accumulated\nAdditional detail: $text';
+
       final logger = ref.read(foodLoggerProvider);
-      final result = await logger.logFromText(text);
+      final result = await logger.logFromText(combinedInput);
       if (!mounted) return;
+
+      // AI asked for a follow-up. Show the question inline and keep
+      // the context for the next round. Cap at 3 to avoid loops.
+      if (result.isClarification && _clarifyRound < 3) {
+        setState(() {
+          _pendingQuestion = result.clarificationQuestion;
+          _accumulated = combinedInput;
+          _clarifyRound += 1;
+          _ctl.clear();
+        });
+        _focus.requestFocus();
+        return;
+      }
+
+      // Either it logged, or we hit the cap (treat as terminal).
+      _resetClarificationState();
       _ctl.clear();
       _focus.unfocus();
-      final msg = result.hasLowConfidence
-          ? 'Logged · estimates may vary'
-          : 'Logged · ${result.totalCalories} kcal';
-      _toast(msg);
+      if (result.entries.isEmpty) {
+        _toast('Still not sure — try adding amounts or how it was cooked.');
+      } else {
+        _toast(result.hasLowConfidence
+            ? 'Logged · estimates may vary'
+            : 'Logged · ${result.totalCalories} kcal');
+      }
     } catch (e) {
       if (!mounted) return;
       final msg = e is AiException ? e.message : 'Something went wrong.';
@@ -337,6 +370,20 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  void _resetClarificationState() {
+    _pendingQuestion = null;
+    _accumulated = '';
+    _clarifyRound = 0;
+  }
+
+  void _cancelClarification() {
+    setState(() {
+      _resetClarificationState();
+      _ctl.clear();
+    });
+    _focus.unfocus();
   }
 
   Future<void> _onCameraTap() async {
@@ -451,6 +498,14 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
           const _ApiKeyHint(),
           const SizedBox(height: 10),
         ],
+        if (_pendingQuestion != null) ...[
+          _ClarificationChip(
+            question: _pendingQuestion!,
+            round: _clarifyRound,
+            onCancel: _cancelClarification,
+          ),
+          const SizedBox(height: 8),
+        ],
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOut,
@@ -493,7 +548,9 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                     isCollapsed: true,
                     contentPadding:
                         const EdgeInsets.symmetric(vertical: 14),
-                    hintText: 'What did you eat?',
+                    hintText: _pendingQuestion == null
+                        ? 'What did you eat?'
+                        : 'Answer above…',
                     hintStyle: AppText.body.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 15,
@@ -580,6 +637,77 @@ class _SubmitButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Soft inline card shown above the AI input when the model asked a
+/// clarifying question instead of guessing. The user answers in the
+/// existing input field and the bar re-prompts with the combined
+/// context. Cancelling drops everything and resets to fresh input.
+class _ClarificationChip extends StatelessWidget {
+  final String question;
+  final int round;
+  final VoidCallback onCancel;
+  const _ClarificationChip({
+    required this.question,
+    required this.round,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.help_outline_rounded,
+              size: 18, color: AppColors.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI needs a detail$_roundSuffix',
+                  style: AppText.label.copyWith(
+                    color: AppColors.accent,
+                    fontSize: 10.5,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  question,
+                  style: AppText.body.copyWith(
+                    color: AppColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onCancel,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded,
+                  size: 16, color: AppColors.textTertiary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get _roundSuffix => round > 1 ? ' · round $round' : '';
 }
 
 class _SheetTile extends StatelessWidget {

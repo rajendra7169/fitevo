@@ -174,6 +174,29 @@ class NutritionRepo {
     });
   }
 
+  /// Overwrite an entry's nutrition fields (used by Refine after the
+  /// AI re-analyses with extra detail). Keeps timestamp, dateKey,
+  /// source, photoPath, isFavorite, and rawInput unchanged — only the
+  /// description, quantity, and the macros move.
+  Future<void> updateFoodEntryNutrition(int id, FoodEntry updated) async {
+    await _isar.writeTxn(() async {
+      final e = await _isar.foodEntrys.get(id);
+      if (e == null) return;
+      e.description = updated.description;
+      e.quantity = updated.quantity;
+      e.calories = updated.calories;
+      e.proteinG = updated.proteinG;
+      e.carbsG = updated.carbsG;
+      e.fatG = updated.fatG;
+      e.fiberG = updated.fiberG;
+      e.sodiumMg = updated.sodiumMg;
+      e.confidence = updated.confidence;
+      e.caloriesLow = updated.caloriesLow;
+      e.caloriesHigh = updated.caloriesHigh;
+      await _isar.foodEntrys.put(e);
+    });
+  }
+
   Future<FoodEntry> relogScaled(FoodEntry source, double scale) async {
     final now = DateTime.now();
     final copy = FoodEntry()

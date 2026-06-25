@@ -71,6 +71,18 @@ class FoodAnalysis {
   final int totalFiberG;
   final int totalSodiumMg;
 
+  /// When set, the model didn't have enough info to log confidently and
+  /// is asking for one short clarification (e.g. "How many eggs?").
+  /// The UI shows this as an inline chip below the input — when the
+  /// user answers, the AI is re-prompted with both the original input
+  /// and the answer combined.
+  final String? clarificationQuestion;
+
+  /// True when the response is purely a clarification request — no
+  /// items were estimated. Use this to skip logging entirely.
+  bool get needsClarification =>
+      clarificationQuestion != null && clarificationQuestion!.isNotEmpty;
+
   const FoodAnalysis({
     required this.items,
     required this.totalCalories,
@@ -79,7 +91,21 @@ class FoodAnalysis {
     required this.totalFatG,
     required this.totalFiberG,
     required this.totalSodiumMg,
+    this.clarificationQuestion,
   });
+
+  /// Convenience constructor for a clarification-only response — no
+  /// estimates, just the question.
+  factory FoodAnalysis.clarification(String question) => FoodAnalysis(
+        items: const [],
+        totalCalories: 0,
+        totalProteinG: 0,
+        totalCarbsG: 0,
+        totalFatG: 0,
+        totalFiberG: 0,
+        totalSodiumMg: 0,
+        clarificationQuestion: question,
+      );
 }
 
 class CoachMessage {

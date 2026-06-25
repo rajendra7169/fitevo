@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/models/enums.dart';
 import '../../data/models/food_entry.dart';
+import '../../services/ai/ai_service.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 
@@ -113,6 +115,90 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
         setState(() => _timestampOverride = null);
         _toast('Could not update time.');
       }
+    }
+  }
+
+  /// Lets the user add detail to an existing entry the AI wasn't sure
+  /// about. Opens a small text dialog, re-prompts the AI with the
+  /// original + the new detail, and (when the AI returns a confident
+  /// estimate) overwrites this entry's nutrition fields in place.
+  /// If the AI still wants to ask another clarifying question, we
+  /// surface it and the user can extend their input again.
+  Future<void> _refine() async {
+    final initial = widget.entry.description.isEmpty
+        ? widget.entry.rawInput
+        : widget.entry.description;
+    String? extra = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _RefineDialog(initial: initial),
+    );
+    if (extra == null || extra.trim().isEmpty || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final ai = ref.read(aiServiceProvider);
+      final combined = '${widget.entry.rawInput.trim()}\n'
+          'Additional detail: ${extra.trim()}';
+      final analysis = await ai.analyzeFoodText(combined);
+      if (!mounted) return;
+      if (analysis.needsClarification) {
+        _toast('AI: "${analysis.clarificationQuestion}" — try adding that too.');
+        return;
+      }
+      if (analysis.items.isEmpty) {
+        _toast('Still couldn\'t estimate. Try a more specific description.');
+        return;
+      }
+      // Roll all items into one updated entry so the existing food row
+      // stays a single entity.
+      var totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+      var totalFib = 0, totalNa = 0;
+      var conf = EstimateConfidence.high;
+      int? cLow, cHigh;
+      for (final i in analysis.items) {
+        totalCal += i.calories;
+        totalP += i.proteinG;
+        totalC += i.carbsG;
+        totalF += i.fatG;
+        totalFib += i.fiberG;
+        totalNa += i.sodiumMg;
+        // Take the worst confidence across items.
+        if (i.confidence == EstimateConfidence.low ||
+            conf == EstimateConfidence.low) {
+          conf = EstimateConfidence.low;
+        } else if (i.confidence == EstimateConfidence.medium &&
+            conf != EstimateConfidence.low) {
+          conf = EstimateConfidence.medium;
+        }
+        cLow = (cLow ?? 0) + (i.caloriesLow ?? i.calories);
+        cHigh = (cHigh ?? 0) + (i.caloriesHigh ?? i.calories);
+      }
+      final updated = FoodEntry()
+        ..description = analysis.items.map((i) => i.name).join(', ')
+        ..quantity = analysis.items
+            .map((i) => i.quantity)
+            .where((q) => q.isNotEmpty)
+            .join(' + ')
+        ..calories = totalCal
+        ..proteinG = totalP
+        ..carbsG = totalC
+        ..fatG = totalF
+        ..fiberG = totalFib
+        ..sodiumMg = totalNa
+        ..confidence = conf
+        ..caloriesLow = cLow
+        ..caloriesHigh = cHigh;
+      await ref
+          .read(nutritionRepoProvider)
+          .updateFoodEntryNutrition(widget.entry.id, updated);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _toast('Refined · $totalCal kcal');
+    } on AiException catch (e) {
+      if (mounted) _toast(e.message);
+    } catch (_) {
+      if (mounted) _toast('Could not refine.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -282,6 +368,12 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
                     ],
                   ),
                 ),
+                _IconButton(
+                  icon: Icons.auto_fix_high_rounded,
+                  color: AppColors.accent,
+                  onTap: _busy ? () {} : _refine,
+                ),
+                const SizedBox(width: 8),
                 _IconButton(
                   icon: _favorite ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: _favorite ? AppColors.streak : AppColors.textPrimary,
@@ -480,6 +572,126 @@ class _Divider extends StatelessWidget {
       width: 1,
       height: 26,
       color: AppColors.stroke,
+    );
+  }
+}
+
+/// Small dialog that captures extra detail to refine a low-confidence
+/// food entry. Returns the user's typed text, or null on cancel.
+class _RefineDialog extends StatefulWidget {
+  final String initial;
+  const _RefineDialog({required this.initial});
+
+  @override
+  State<_RefineDialog> createState() => _RefineDialogState();
+}
+
+class _RefineDialogState extends State<_RefineDialog> {
+  late final TextEditingController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.auto_fix_high_rounded,
+                    size: 18, color: AppColors.accent),
+                const SizedBox(width: 8),
+                Text('Refine this entry',
+                    style: AppText.sectionTitle.copyWith(fontSize: 17)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Add the missing details so the AI can re-estimate this entry.',
+              style: AppText.body.copyWith(fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                widget.initial,
+                style: AppText.meta.copyWith(
+                    fontSize: 12.5, color: AppColors.textSecondary),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.stroke),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: TextField(
+                controller: _ctl,
+                autofocus: true,
+                minLines: 1,
+                maxLines: 3,
+                cursorColor: AppColors.accent,
+                style: AppText.body.copyWith(
+                    color: AppColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(vertical: 14),
+                  hintText:
+                      'e.g. 2 eggs, scrambled with butter, on toast',
+                  hintStyle: AppText.body.copyWith(
+                      color: AppColors.textTertiary, fontSize: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancel',
+                      style: AppText.body
+                          .copyWith(color: AppColors.textPrimary)),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.of(context).pop(_ctl.text.trim()),
+                  child: Text('Refine',
+                      style: AppText.body.copyWith(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

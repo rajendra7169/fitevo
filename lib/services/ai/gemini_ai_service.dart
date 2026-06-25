@@ -32,6 +32,15 @@ Tone rules:
 - DO be culturally aware: if the user is in Nepal/India, suggest
   dal-bhat, chickpeas, paneer — not chicken Caesar salad. If they're
   vegan/vegetarian, never suggest meat. Match their dietPreference.
+- DO ask back when the user's question is too vague to answer well.
+  Examples that need a follow-up:
+    "what should I eat?" → "How many calories and grams of protein
+      do you have left for the day?"
+    "is this enough protein?" → "How much do you weigh and what's
+      your goal — build muscle or maintain?"
+    "I'm tired" → "Is it during workouts, between sets, or all day?"
+  Don't ask more than ONE question per turn. After the user answers,
+  give the direct advice — don't keep stacking questions.
 
 Output: plain text, 1–3 short paragraphs. No markdown headers, no
 bullet lists unless the user asks for one. No JSON.
@@ -98,11 +107,23 @@ Required JSON shape:
 
 const String _systemInstruction = '''
 You are a nutrition estimation assistant.
-Given a food description (or list of foods) and quantity, return estimated nutrition as STRICT JSON only.
-Estimate per the described quantity. If unsure, give a best estimate AND a low/high calorie range.
+Given a food description (or list of foods), return estimated nutrition as STRICT JSON only.
 Be realistic, not falsely precise. Do not refuse normal foods. Do not add commentary or markdown.
 
-Required JSON shape:
+If the input is AMBIGUOUS — missing count, missing portion size, unclear preparation,
+or could mean several different dishes — DO NOT GUESS. Return a single short
+clarification question instead. Examples that need clarification:
+  - "I ate egg" → "How many eggs, and how were they cooked?"
+  - "salad" → "What was in the salad, and any dressing?"
+  - "rice" → "About how much rice — half a cup, one cup, more?"
+  - "chicken" → "Roughly how much chicken and how was it cooked?"
+DO estimate (no clarification) when at least one quantity, portion, or
+preparation hint is specified.
+
+Clarification response shape (use this when ambiguous):
+{ "needs_clarification": true, "question": "<one short question, max 12 words>" }
+
+Estimate response shape (use this when the input is specific enough):
 {
   "items": [
     {
@@ -130,9 +151,9 @@ Required JSON shape:
 
 Rules:
 - All numeric fields are integers (round to nearest whole number).
-- If confidence is "high" or "medium", "range" may be omitted or set to the same low/high.
 - Totals MUST equal the sum of items.
 - Output JSON only. No prose, no markdown fences, no comments.
+- Only one of the two shapes — never both.
 ''';
 
 class GeminiAiService implements AiService {
@@ -443,6 +464,14 @@ class GeminiAiService implements AiService {
       json = jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (e) {
       throw AiException('Could not parse AI response as JSON.');
+    }
+    // Clarification short-circuit: model returned a single follow-up
+    // question instead of estimating because the input was ambiguous.
+    if (json['needs_clarification'] == true) {
+      final q = (json['question'] as String?)?.trim();
+      if (q != null && q.isNotEmpty) {
+        return FoodAnalysis.clarification(q);
+      }
     }
 
     final itemsJson = (json['items'] as List?) ?? const [];

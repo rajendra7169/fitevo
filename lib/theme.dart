@@ -10,6 +10,7 @@ class AppPalette {
   final Color accent;
   final Color accentDim;
   final Color accentSoft; // tinted background for chips/cards
+  final Color onAccent; // text/icon color on accent-filled buttons
   final Color calorieFrom;
   final Color calorieTo;
   final Color protein;
@@ -35,6 +36,7 @@ class AppPalette {
     required this.accent,
     required this.accentDim,
     required this.accentSoft,
+    required this.onAccent,
     required this.calorieFrom,
     required this.calorieTo,
     required this.protein,
@@ -71,6 +73,7 @@ const AppPalette darkPalette = AppPalette(
   accent: Color(0xFFE8702C), // Saffron lifted for dark contrast
   accentDim: Color(0xFF8A4318),
   accentSoft: Color(0xFF2A1F18), // tinted chip bg
+  onAccent: Color(0xFFFFFFFF), // white reads premium on warm saffron
   calorieFrom: Color(0xFFE8702C), // saffron
   calorieTo: Color(0xFFC9A64A), // gold
   protein: Color(0xFF6BA66B), // leaf, brightened for dark
@@ -96,6 +99,7 @@ const AppPalette lightPalette = AppPalette(
   accent: Color(0xFFC8501B), // saffron
   accentDim: Color(0xFFA33A0D), // saffron deep (pressed)
   accentSoft: Color(0xFFFCE9D9), // saffron soft (chip bg)
+  onAccent: Color(0xFFFFFFFF), // white reads premium on warm saffron
   calorieFrom: Color(0xFFC8501B), // saffron
   calorieTo: Color(0xFFC9A64A), // gold
   protein: Color(0xFF4A7A4A), // leaf
@@ -124,6 +128,7 @@ class AppColors {
   static Color get accent => _palette.accent;
   static Color get accentDim => _palette.accentDim;
   static Color get accentSoft => _palette.accentSoft;
+  static Color get onAccent => _palette.onAccent;
   static Color get calorieFrom => _palette.calorieFrom;
   static Color get calorieTo => _palette.calorieTo;
   static Color get protein => _palette.protein;
@@ -155,16 +160,16 @@ ThemeData buildAppTheme(AppPalette palette) {
         ? ColorScheme.dark(
             surface: palette.bg,
             primary: palette.accent,
-            onPrimary: Colors.black,
+            onPrimary: palette.onAccent,
             secondary: palette.accent,
-            onSecondary: Colors.black,
+            onSecondary: palette.onAccent,
           )
         : ColorScheme.light(
             surface: palette.bg,
             primary: palette.accent,
-            onPrimary: Colors.black,
+            onPrimary: palette.onAccent,
             secondary: palette.accent,
-            onSecondary: Colors.black,
+            onSecondary: palette.onAccent,
           ),
     textTheme: textTheme,
     splashFactory: NoSplash.splashFactory,

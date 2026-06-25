@@ -265,19 +265,19 @@ class _WeeklyRecapCardState extends ConsumerState<WeeklyRecapCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_loading)
-                      const SizedBox(
+                      SizedBox(
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.black),
+                            strokeWidth: 2, color: AppColors.onAccent),
                       )
                     else
-                      const Icon(Icons.auto_awesome_rounded,
-                          size: 14, color: Colors.black),
+                      Icon(Icons.auto_awesome_rounded,
+                          size: 14, color: AppColors.onAccent),
                     const SizedBox(width: 8),
                     Text(_loading ? 'Asking…' : 'Get this week\'s recap',
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: AppColors.onAccent,
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                           letterSpacing: 0.3,

@@ -45,6 +45,26 @@ subprojects {
             } catch (_: Exception) {}
         }
     }
+
+    // Force Java 17 on every subproject (app + every plugin library).
+    // Some Flutter plugins still ship with sourceCompatibility = 1.8
+    // which Gradle/javac warn about as obsolete. Bumping them keeps
+    // the build clean and future-proofs against JDK removing the
+    // legacy targets entirely.
+    //
+    // Kotlin is left to inherit from the plugin's own DSL — Kotlin 2.x
+    // removed kotlinOptions and the new compilerOptions block doesn't
+    // compose cleanly here. The Java fix is what silences the warnings
+    // the user actually sees; Kotlin's jvmTarget already matches.
+    afterEvaluate {
+        tasks.withType<JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+            // Hide the noisy "deprecated API" notes from third-party
+            // plugins we can't fix. Still surfaces real errors.
+            options.compilerArgs.addAll(listOf("-Xlint:-options", "-Xlint:-deprecation"))
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")

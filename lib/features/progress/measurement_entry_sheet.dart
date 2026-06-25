@@ -347,15 +347,16 @@ class _MeasurementEntrySheetState extends ConsumerState<MeasurementEntrySheet> {
                   ),
                   alignment: Alignment.center,
                   child: _busy
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2.4, color: Colors.black))
+                              strokeWidth: 2.4,
+                              color: AppColors.onAccent))
                       : Text(
                           'Save',
-                          style: const TextStyle(
-                            color: Colors.black,
+                          style: TextStyle(
+                            color: AppColors.onAccent,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.2,

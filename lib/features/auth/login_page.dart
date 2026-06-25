@@ -372,16 +372,16 @@ class _PrimaryButton extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: busy
-            ? const SizedBox(
+            ? SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: Colors.black),
+                    strokeWidth: 2.4, color: AppColors.onAccent),
               )
             : Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: AppColors.onAccent,
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,

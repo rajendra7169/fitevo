@@ -107,11 +107,11 @@ class _Empty extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.add_rounded, color: Colors.black, size: 18),
+                    Icon(Icons.add_rounded, color: AppColors.onAccent, size: 18),
                     const SizedBox(width: 6),
                     Text('Create one',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: AppColors.onAccent,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                           letterSpacing: -0.2,
@@ -266,15 +266,15 @@ class _FoodCardState extends ConsumerState<_FoodCard> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: _logging
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.black))
-                    : const Text(
+                            strokeWidth: 2, color: AppColors.onAccent))
+                    : Text(
                         'Log',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: AppColors.onAccent,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.1,

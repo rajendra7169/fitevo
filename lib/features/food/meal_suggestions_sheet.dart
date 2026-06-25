@@ -259,9 +259,9 @@ class _MealSuggestionsSheetState
                   color: AppColors.accent,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text('Try again',
+                child: Text('Try again',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: AppColors.onAccent,
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
                     )),
@@ -323,10 +323,10 @@ class _MealSuggestionsSheetState
                     color: AppColors.accent,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Log',
                     style: TextStyle(
-                      color: Colors.black,
+                      color: AppColors.onAccent,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                     ),

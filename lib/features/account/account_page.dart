@@ -658,17 +658,18 @@ class _AnonymousUpgradeViewState extends ConsumerState<_AnonymousUpgradeView> {
                         ),
                         alignment: Alignment.center,
                         child: _busy
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2.2, color: Colors.black))
+                                    strokeWidth: 2.2,
+                                    color: AppColors.onAccent))
                             : Text(
                                 _createMode
                                     ? 'Create account & link'
                                     : 'Sign in & link',
-                                style: const TextStyle(
-                                  color: Colors.black,
+                                style: TextStyle(
+                                  color: AppColors.onAccent,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
                                 ),

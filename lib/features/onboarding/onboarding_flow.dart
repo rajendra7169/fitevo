@@ -975,7 +975,7 @@ class _YesNoToggle extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(label,
                 style: TextStyle(
-                  color: selected ? Colors.black : AppColors.textPrimary,
+                  color: selected ? AppColors.onAccent : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 )),
@@ -1256,7 +1256,7 @@ class _DayPickerRow extends StatelessWidget {
                 child: Text(
                   '$n',
                   style: TextStyle(
-                    color: active ? Colors.black : AppColors.textPrimary,
+                    color: active ? AppColors.onAccent : AppColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1572,7 +1572,7 @@ class _TimePickerTile extends StatelessWidget {
           data: Theme.of(ctx).copyWith(
             colorScheme: Theme.of(ctx).colorScheme.copyWith(
                   primary: AppColors.accent,
-                  onPrimary: Colors.black,
+                  onPrimary: AppColors.onAccent,
                   surface: AppColors.surface,
                   onSurface: AppColors.textPrimary,
                 ),
@@ -2371,7 +2371,7 @@ class _SegmentedRow<T> extends StatelessWidget {
                 child: Text(
                   o.$2,
                   style: TextStyle(
-                    color: active ? Colors.black : AppColors.textPrimary,
+                    color: active ? AppColors.onAccent : AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -2431,8 +2431,8 @@ class _SegmentedColumn<T> extends StatelessWidget {
                       ),
                     ),
                     child: active
-                        ? const Icon(Icons.check_rounded,
-                            size: 14, color: Colors.black)
+                        ? Icon(Icons.check_rounded,
+                            size: 14, color: AppColors.onAccent)
                         : null,
                   ),
                   const SizedBox(width: 14),
@@ -2594,16 +2594,16 @@ class _PrimaryButton extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2.4, color: Colors.black),
+                    strokeWidth: 2.4, color: AppColors.onAccent),
               )
             : Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: AppColors.onAccent,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,

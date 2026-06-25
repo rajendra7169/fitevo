@@ -72,8 +72,8 @@ class TodaysActivityCard extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(hasLog ? 'Update' : 'Log',
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: AppColors.onAccent,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                         letterSpacing: 0.2,
@@ -298,16 +298,16 @@ class _ActivityLogSheetState extends ConsumerState<_ActivityLogSheet> {
               ),
               alignment: Alignment.center,
               child: _saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.black),
+                          strokeWidth: 2, color: AppColors.onAccent),
                     )
-                  : const Text(
+                  : Text(
                       'Save & bump my calories',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: AppColors.onAccent,
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
                       ),

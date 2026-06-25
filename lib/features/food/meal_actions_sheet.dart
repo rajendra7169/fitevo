@@ -259,16 +259,16 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
                 ),
                 alignment: Alignment.center,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.4, color: Colors.black),
+                            strokeWidth: 2.4, color: AppColors.onAccent),
                       )
                     : Text(
                         'Log again',
-                        style: const TextStyle(
-                          color: Colors.black,
+                        style: TextStyle(
+                          color: AppColors.onAccent,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
@@ -336,7 +336,7 @@ class _ScaleChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : AppColors.textPrimary,
+            color: selected ? AppColors.onAccent : AppColors.textPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 14,
             letterSpacing: -0.2,

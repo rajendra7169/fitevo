@@ -128,7 +128,7 @@ class _QuickWeighInCardState extends ConsumerState<QuickWeighInCard> {
               child: Text(
                 loggedToday ? 'Update' : 'Log',
                 style: TextStyle(
-                  color: loggedToday ? AppColors.textPrimary : Colors.black,
+                  color: loggedToday ? AppColors.textPrimary : AppColors.onAccent,
                   fontWeight: FontWeight.w800,
                   fontSize: 12,
                   letterSpacing: 0.2,
@@ -257,15 +257,15 @@ class _WeighInSheetState extends State<_WeighInSheet> {
               ),
               alignment: Alignment.center,
               child: _saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.black),
+                          strokeWidth: 2, color: AppColors.onAccent),
                     )
-                  : const Text('Save',
+                  : Text('Save',
                       style: TextStyle(
-                        color: Colors.black,
+                        color: AppColors.onAccent,
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
                       )),

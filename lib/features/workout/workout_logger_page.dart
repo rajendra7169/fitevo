@@ -203,14 +203,14 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
             borderRadius: BorderRadius.circular(14)),
         content: Row(
           children: [
-            const Icon(Icons.emoji_events_rounded,
-                color: Colors.black, size: 18),
+            Icon(Icons.emoji_events_rounded,
+                color: AppColors.onAccent, size: 18),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 'New PR · $name · est. $fmt kg',
-                style: const TextStyle(
-                  color: Colors.black,
+                style: TextStyle(
+                  color: AppColors.onAccent,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
@@ -289,7 +289,7 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                     ? Icons.emoji_events_rounded
                     : Icons.check_circle_rounded,
                 color: prsThisSession > 0
-                    ? Colors.black
+                    ? AppColors.onAccent
                     : AppColors.textPrimary,
                 size: 20),
             const SizedBox(width: 10),
@@ -298,7 +298,7 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                 '$prText  •  $workingSets sets · ${tonnage.toStringAsFixed(0)} kg total',
                 style: TextStyle(
                   color: prsThisSession > 0
-                      ? Colors.black
+                      ? AppColors.onAccent
                       : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
@@ -577,8 +577,8 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                           alignment: Alignment.center,
                           child: Text(
                             'Finish workout',
-                            style: const TextStyle(
-                              color: Colors.black,
+                            style: TextStyle(
+                              color: AppColors.onAccent,
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.2,
@@ -881,7 +881,7 @@ class _SetRow extends StatelessWidget {
                   ),
                   child: Icon(
                     state.done ? Icons.check_rounded : Icons.add_rounded,
-                    color: Colors.black,
+                    color: AppColors.onAccent,
                     size: 20,
                   ),
                 ),

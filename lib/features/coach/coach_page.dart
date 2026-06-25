@@ -370,13 +370,13 @@ class _WeeklyReviewCard extends StatelessWidget {
                         ? Icons.auto_awesome_rounded
                         : Icons.refresh_rounded,
                     size: 13,
-                    color: Colors.black,
+                    color: AppColors.onAccent,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     review == null ? 'Get review' : 'Refresh',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: AppColors.onAccent,
                       fontWeight: FontWeight.w800,
                       fontSize: 12,
                       letterSpacing: -0.1,
@@ -496,7 +496,7 @@ class _Bubble extends StatelessWidget {
             child: Text(
               message.text,
               style: TextStyle(
-                color: fromUser ? Colors.black : AppColors.textPrimary,
+                color: fromUser ? AppColors.onAccent : AppColors.textPrimary,
                 fontSize: 14,
                 height: 1.35,
                 fontWeight:
@@ -620,7 +620,7 @@ class _Composer extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.arrow_upward_rounded,
-                  color: Colors.black, size: 20),
+                  color: AppColors.onAccent, size: 20),
             ),
           ),
         ],

@@ -132,22 +132,22 @@ class _AdaptiveNudgeCardState extends ConsumerState<AdaptiveNudgeCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_applying)
-                      const SizedBox(
+                      SizedBox(
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.black),
+                            strokeWidth: 2, color: AppColors.onAccent),
                       )
                     else
-                      const Icon(Icons.check_rounded,
-                          size: 14, color: Colors.black),
+                      Icon(Icons.check_rounded,
+                          size: 14, color: AppColors.onAccent),
                     const SizedBox(width: 6),
                     Text(
                       _applying
                           ? 'Applying…'
                           : 'Apply ${s.kcalDelta > 0 ? "+" : ""}${s.kcalDelta} kcal',
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: AppColors.onAccent,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                         letterSpacing: 0.2,

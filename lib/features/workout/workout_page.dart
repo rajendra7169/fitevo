@@ -143,21 +143,21 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
               ),
               alignment: Alignment.center,
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2.4, color: Colors.black))
+                          strokeWidth: 2.4, color: AppColors.onAccent))
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            color: Colors.black, size: 18),
+                        Icon(Icons.auto_awesome_rounded,
+                            color: AppColors.onAccent, size: 18),
                         const SizedBox(width: 8),
                         Text(
                           'Generate my routine',
-                          style: const TextStyle(
-                            color: Colors.black,
+                          style: TextStyle(
+                            color: AppColors.onAccent,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.2,
@@ -570,12 +570,12 @@ class _TodayCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.play_arrow_rounded,
-                      color: Colors.black, size: 22),
+                      color: AppColors.onAccent, size: 22),
                   const SizedBox(width: 4),
                   Text(
                     'Start workout',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: AppColors.onAccent,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.2,

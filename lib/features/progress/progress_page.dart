@@ -705,7 +705,7 @@ class _StrengthSectionState extends State<_StrengthSection> {
                     e.name,
                     style: TextStyle(
                       color: selected
-                          ? Colors.black
+                          ? AppColors.onAccent
                           : AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,

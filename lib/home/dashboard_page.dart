@@ -564,7 +564,7 @@ class _SubmitButton extends StatelessWidget {
         child: Icon(
           Icons.arrow_upward_rounded,
           size: 18,
-          color: enabled ? Colors.black : AppColors.textTertiary,
+          color: enabled ? AppColors.onAccent : AppColors.textTertiary,
         ),
       ),
     );
@@ -1295,8 +1295,8 @@ class _WorkoutCardShell extends StatelessWidget {
                 ),
                 child: Text(
                   action!,
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: AppColors.onAccent,
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.1,

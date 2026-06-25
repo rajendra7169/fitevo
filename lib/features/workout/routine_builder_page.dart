@@ -328,9 +328,9 @@ class _RoutineBuilderPageState extends ConsumerState<RoutineBuilderPage> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                           alignment: Alignment.center,
-                          child: const Text('Save',
+                          child: Text('Save',
                               style: TextStyle(
-                                color: Colors.black,
+                                color: AppColors.onAccent,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
                               )),
@@ -822,9 +822,9 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       alignment: Alignment.center,
-                      child: const Text('Add this exercise',
+                      child: Text('Add this exercise',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: AppColors.onAccent,
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                           )),
@@ -969,7 +969,7 @@ class _Chip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : AppColors.textPrimary,
+            color: selected ? AppColors.onAccent : AppColors.textPrimary,
             fontWeight: FontWeight.w700,
             fontSize: 12,
             letterSpacing: -0.1,

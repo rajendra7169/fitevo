@@ -1042,15 +1042,20 @@ class _WaterChip extends ConsumerStatefulWidget {
 }
 
 class _WaterChipState extends ConsumerState<_WaterChip>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _tap = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 600),
   );
+  late final AnimationController _wave = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat();
 
   @override
   void dispose() {
     _tap.dispose();
+    _wave.dispose();
     super.dispose();
   }
 
@@ -1074,97 +1079,95 @@ class _WaterChipState extends ConsumerState<_WaterChip>
       onLongPress: _openDetail,
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
-        animation: _tap,
+        animation: Listenable.merge([_tap, _wave]),
         builder: (ctx, _) {
           final t = _tap.value;
-          // Single-shot scale pulse: down to 0.96 then back, peaks mid-tap.
           final pulse = 1.0 - 0.04 * math.sin(t * math.pi).clamp(0.0, 1.0);
           return Transform.scale(
             scale: pulse,
+            // Outer Stack lets the floating "+250 ml" hint escape the
+            // chip's clipped bounds. Inner Container clips the wave
+            // cleanly to the rounded radius.
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: AppColors.stroke, width: 1),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // antiAlias clips the wave to the rounded shape so the
+                  // bottom-left + bottom-right corners are filled cleanly.
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 26,
-                            height: 26,
-                            decoration: BoxDecoration(
-                              color: AppColors.water.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(Icons.water_drop_rounded,
-                                size: 14, color: AppColors.water),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Water',
-                              style: AppText.meta.copyWith(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textTertiary,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ),
-                          Icon(Icons.add_rounded,
-                              size: 14, color: AppColors.water),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: (widget.consumedMl / 1000)
-                                    .toStringAsFixed(1),
-                                style: AppText.bigNumber.copyWith(fontSize: 18),
-                              ),
-                              TextSpan(
-                                text:
-                                    ' /${(widget.targetMl / 1000).toStringAsFixed(1)}L',
-                                style: AppText.meta.copyWith(
-                                    fontSize: 11,
-                                    color: AppColors.textTertiary),
-                              ),
-                            ],
+                      // Wave layer — clipped by the Container's rounded shape
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _WaterWavePainter(
+                            progress: widget.progress,
+                            wavePhase: _wave.value * 2 * math.pi,
+                            color: AppColors.water,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Thin progress underline — matches the macro chips' visual
-                      // language. Animates smoothly when the value changes.
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Stack(
+                      // Content layer
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                                height: 3, color: AppColors.surfaceHigh),
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(
-                                  begin: 0,
-                                  end: widget.progress.clamp(0.0, 1.0)),
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeOutCubic,
-                              builder: (_, v, _) => FractionallySizedBox(
-                                widthFactor: v,
-                                child: Container(
-                                  height: 3,
-                                  color: AppColors.water,
+                            Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.water
+                                        .withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(Icons.water_drop_rounded,
+                                      size: 14, color: AppColors.water),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Water',
+                                    style: AppText.meta.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textTertiary,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.add_rounded,
+                                    size: 14, color: AppColors.water),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: (widget.consumedMl / 1000)
+                                          .toStringAsFixed(1),
+                                      style: AppText.bigNumber
+                                          .copyWith(fontSize: 18),
+                                    ),
+                                    TextSpan(
+                                      text:
+                                          ' /${(widget.targetMl / 1000).toStringAsFixed(1)}L',
+                                      style: AppText.meta.copyWith(
+                                          fontSize: 11,
+                                          color: AppColors.textTertiary),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -1174,8 +1177,7 @@ class _WaterChipState extends ConsumerState<_WaterChip>
                     ],
                   ),
                 ),
-                // Floating "+250 ml" hint that rises out the top after a tap.
-                // Sits outside the chip's clip so it can float upward.
+                // Floating "+250 ml" hint — rises above the chip on tap.
                 if (t > 0 && t < 1)
                   Positioned(
                     right: 8,
@@ -1215,6 +1217,77 @@ class _WaterChipState extends ConsumerState<_WaterChip>
       ),
     );
   }
+}
+
+/// Animated water-level inside the chip. The water surface is a low-
+/// amplitude sine wave that drifts continuously; height = progress.
+/// The path extends slightly beyond the chip bounds horizontally so the
+/// rounded corners are filled completely after the parent's clipping.
+class _WaterWavePainter extends CustomPainter {
+  final double progress;
+  final double wavePhase;
+  final Color color;
+
+  _WaterWavePainter({
+    required this.progress,
+    required this.wavePhase,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final clamped = progress.clamp(0.0, 1.0);
+    final amplitude = 3.0;
+    // Pull the water surface down by the wave amplitude so the highest
+    // wave crest never exceeds the intended fill line. Also overdraw a
+    // few px past the bottom + sides so the rounded corner clip fills
+    // cleanly with no rendering seam.
+    final waterLevel = size.height * (1 - clamped) + amplitude;
+
+    final path = Path()..moveTo(-4, size.height + 4);
+    path.lineTo(-4, waterLevel);
+    for (var x = -4.0; x <= size.width + 4; x += 4) {
+      final y = waterLevel +
+          amplitude *
+              math.sin((x / size.width) * 2 * math.pi + wavePhase);
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width + 4, size.height + 4);
+    path.close();
+
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.32),
+          color.withValues(alpha: 0.14),
+        ],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(path, paint);
+
+    // Subtle surface highlight — a 1px line at the wave crest so the
+    // water has a visible "top" against the chip background.
+    final crest = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = color.withValues(alpha: 0.40);
+    final crestPath = Path()..moveTo(-4, waterLevel);
+    for (var x = -4.0; x <= size.width + 4; x += 4) {
+      final y = waterLevel +
+          amplitude *
+              math.sin((x / size.width) * 2 * math.pi + wavePhase);
+      crestPath.lineTo(x, y);
+    }
+    canvas.drawPath(crestPath, crest);
+  }
+
+  @override
+  bool shouldRepaint(_WaterWavePainter old) =>
+      old.progress != progress ||
+      old.wavePhase != wavePhase ||
+      old.color != color;
 }
 
 class _StatChip extends StatelessWidget {

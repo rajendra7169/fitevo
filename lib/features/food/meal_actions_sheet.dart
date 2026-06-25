@@ -75,28 +75,10 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
 
   /// Lets the user fix a timestamp they forgot to set at log time.
   /// Common case: AI-logged at 9pm but the food was actually eaten at
-  /// 1pm. Without this, the day's distribution graph is wrong.
+  /// 1pm. Only edits the time-of-day; the date stays on the original
+  /// day the meal was logged.
   Future<void> _editTime() async {
     final initial = _displayedTimestamp;
-    final now = DateTime.now();
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: now.subtract(const Duration(days: 30)),
-      lastDate: now,
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                primary: AppColors.accent,
-                onPrimary: AppColors.onAccent,
-                surface: AppColors.surface,
-                onSurface: AppColors.textPrimary,
-              ),
-        ),
-        child: child!,
-      ),
-    );
-    if (pickedDate == null || !mounted) return;
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(initial),
@@ -114,9 +96,9 @@ class _MealActionsSheetState extends ConsumerState<MealActionsSheet> {
     );
     if (pickedTime == null || !mounted) return;
     final newTs = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
+      initial.year,
+      initial.month,
+      initial.day,
       pickedTime.hour,
       pickedTime.minute,
     );

@@ -165,25 +165,6 @@ class _MealGroupCardState extends ConsumerState<_MealGroupCard> {
 
   Future<void> _editGroupTime() async {
     final initial = _tsOverride ?? widget.entries.first.timestamp;
-    final now = DateTime.now();
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: now.subtract(const Duration(days: 30)),
-      lastDate: now,
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: Theme.of(ctx).colorScheme.copyWith(
-                primary: AppColors.accent,
-                onPrimary: AppColors.onAccent,
-                surface: AppColors.surface,
-                onSurface: AppColors.textPrimary,
-              ),
-        ),
-        child: child!,
-      ),
-    );
-    if (pickedDate == null || !mounted) return;
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(initial),
@@ -200,10 +181,11 @@ class _MealGroupCardState extends ConsumerState<_MealGroupCard> {
       ),
     );
     if (pickedTime == null || !mounted) return;
+    // Keep the entry on its original date — only the time changes.
     final newTs = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
+      initial.year,
+      initial.month,
+      initial.day,
       pickedTime.hour,
       pickedTime.minute,
     );

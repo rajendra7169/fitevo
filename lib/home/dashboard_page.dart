@@ -1088,9 +1088,23 @@ class _MacroBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final left = math.max(0, target - consumed);
-    final progress =
+    final primaryFill =
         target == 0 ? 0.0 : (consumed / target).clamp(0.0, 1.0);
+    final overflowAmount = math.max(0, consumed - target);
+    final hasOverflow = overflowAmount > 0 && target > 0;
+    // Overflow as fraction of target — clamped so a wild over-consume
+    // doesn't push the overlay past the bar. Mirrors the calorie ring's
+    // overflow behavior.
+    final overflowFill =
+        target == 0 ? 0.0 : (overflowAmount / target).clamp(0.0, 1.0);
     final done = left == 0 && target > 0;
+    // Apple-Watch-style gradient: start light, end dark — same hue.
+    final lightColor = Color.lerp(color, Colors.white, 0.55)!;
+    final darkColor = color;
+    // Overflow overlay is a deeper shade of the same hue so it reads
+    // as "more of the same" rather than a different color.
+    final overflowStart = Color.lerp(color, Colors.black, 0.15)!;
+    final overflowEnd = Color.lerp(color, Colors.black, 0.35)!;
 
     return GestureDetector(
       onTap: onTap,
@@ -1129,19 +1143,21 @@ class _MacroBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text('$left',
+                Text(hasOverflow ? '+$overflowAmount' : '$left',
                     style: AppText.bigNumber.copyWith(
                       fontSize: 22,
-                      color: done
-                          ? AppColors.textTertiary
-                          : AppColors.textPrimary,
+                      color: hasOverflow
+                          ? color
+                          : done
+                              ? AppColors.textTertiary
+                              : AppColors.textPrimary,
                     )),
                 const SizedBox(width: 2),
                 Text('g',
                     style: AppText.meta.copyWith(
                         fontSize: 12, color: AppColors.textTertiary)),
                 const SizedBox(width: 4),
-                Text(done ? 'done' : 'left',
+                Text(hasOverflow ? 'over' : (done ? 'done' : 'left'),
                     style: AppText.meta.copyWith(
                         fontSize: 11, color: AppColors.textTertiary)),
               ],
@@ -1154,7 +1170,7 @@ class _MacroBar extends StatelessWidget {
               children: [
                 Container(height: 5, color: AppColors.surfaceHigh),
                 TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: progress),
+                  tween: Tween(begin: 0, end: primaryFill),
                   duration: const Duration(milliseconds: 600),
                   curve: Curves.easeOutCubic,
                   builder: (_, v, _) => FractionallySizedBox(
@@ -1162,12 +1178,42 @@ class _MacroBar extends StatelessWidget {
                     child: Container(
                       height: 5,
                       decoration: BoxDecoration(
-                        color: done ? AppColors.textTertiary : color,
+                        gradient: LinearGradient(
+                          colors: [lightColor, darkColor],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
                 ),
+                if (hasOverflow)
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: overflowFill),
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, _) => FractionallySizedBox(
+                      widthFactor: v,
+                      child: Container(
+                        height: 5,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [overflowStart, overflowEnd],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.45),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

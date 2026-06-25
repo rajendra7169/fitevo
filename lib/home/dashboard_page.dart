@@ -733,7 +733,7 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
                             ? 'What did you eat?'
                             : 'Answer above…'),
                     hintStyle: AppText.body.copyWith(
-                      color: AppColors.textSecondary,
+                      color: AppColors.textTertiary,
                       fontSize: 15,
                     ),
                   ),

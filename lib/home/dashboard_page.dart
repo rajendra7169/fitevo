@@ -791,30 +791,27 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Apple-Watch-style ring: the whole stroke is ONE solid color that
-    // simply gets deeper as the ring fills. No per-arc gradient, no
-    // chance of the shader wrapping around the canvas centre and
-    // producing the "two-tone band" the user was seeing. When the user
-    // exceeds the target, an overflow ring draws on top with a darker
-    // shade plus a soft shadow underneath for the Apple Watch overlap.
+    // Apple-Watch-style ring. Paint the arc as many small SEGMENTS,
+    // each with a color interpolated by its position along the visible
+    // arc. This avoids the SweepGradient wrap-around bug that was
+    // producing the "two-tone band" earlier — every pixel of the
+    // stroke gets its color computed directly, no shader involved.
     if (progress <= 0) return;
 
-    // -------- First lap --------
+    const segments = 60;
     final primaryFraction = math.min(progress, 1.0);
     final primarySweep = 2 * math.pi * primaryFraction;
-    // Lerp from bright gold (0%) to deep saffron (100%) so the whole
-    // ring darkens as you eat more. At 50% it's a balanced amber.
-    final primaryColor = Color.lerp(
-      AppColors.warning,
-      AppColors.calorieFrom,
-      primaryFraction,
-    )!;
-    final primaryPaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(rect, -math.pi / 2, primarySweep, false, primaryPaint);
+
+    _paintArcGradient(
+      canvas: canvas,
+      rect: rect,
+      startAngle: -math.pi / 2,
+      sweep: primarySweep,
+      startColor: AppColors.warning,      // light gold at the arc start
+      endColor: AppColors.calorieFrom,    // deep saffron at the tip
+      strokeWidth: strokeWidth,
+      segments: segments,
+    );
 
     // -------- Overflow (a second pass on top of the first lap) --------
     if (progress > 1.0) {
@@ -831,22 +828,64 @@ class _RingPainter extends CustomPainter {
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
       canvas.drawArc(rect, -math.pi / 2, overflowSweep, false, shadow);
 
-      // Overflow stroke: starts deep saffron (visually continues from
-      // the end of the first lap) and lerps toward danger-red the
-      // further past target you go.
-      final overflowColor = Color.lerp(
-        AppColors.calorieFrom,
-        AppColors.danger,
-        overflowFraction,
-      )!;
-      final overflowPaint = Paint()
-        ..color = overflowColor
+      // Overflow stroke: continues the journey, deep saffron lerping
+      // to danger-red as you go further past target.
+      _paintArcGradient(
+        canvas: canvas,
+        rect: rect,
+        startAngle: -math.pi / 2,
+        sweep: overflowSweep,
+        startColor: AppColors.calorieFrom,
+        endColor: AppColors.danger,
+        strokeWidth: strokeWidth,
+        segments: segments,
+      );
+    }
+  }
+
+  /// Manually paints an arc with a smooth color gradient by drawing it
+  /// as [segments] tiny butt-capped arc pieces, plus rounded end-caps
+  /// so the start and tip stay smooth.
+  void _paintArcGradient({
+    required Canvas canvas,
+    required Rect rect,
+    required double startAngle,
+    required double sweep,
+    required Color startColor,
+    required Color endColor,
+    required double strokeWidth,
+    required int segments,
+  }) {
+    if (sweep <= 0) return;
+    final segSweep = sweep / segments;
+    for (var i = 0; i < segments; i++) {
+      final t = (i + 0.5) / segments; // midpoint of this segment
+      final color = Color.lerp(startColor, endColor, t)!;
+      final segStart = startAngle + i * segSweep;
+      final paint = Paint()
+        ..color = color
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-      canvas.drawArc(
-          rect, -math.pi / 2, overflowSweep, false, overflowPaint);
+        ..strokeCap = StrokeCap.butt;
+      // Slight overlap so adjacent segments blend without a seam.
+      canvas.drawArc(rect, segStart, segSweep + 0.012, false, paint);
     }
+    // Rounded caps drawn as zero-length stroke segments at both ends
+    // so the tip and start are visually smooth like the previous
+    // single-stroke version.
+    final startCap = Paint()
+      ..color = startColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, startAngle, 0.001, false, startCap);
+
+    final endCap = Paint()
+      ..color = endColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, startAngle + sweep - 0.001, 0.001, false, endCap);
   }
 
   @override

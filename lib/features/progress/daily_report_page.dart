@@ -553,16 +553,24 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
             ),
             if (raw.isNotEmpty) ...[
               pw.SizedBox(height: 4),
-              pw.Text('"$raw"',
-                  style: pw.TextStyle(
-                      fontSize: 10,
-                      color: muted,
-                      fontStyle: pw.FontStyle.italic)),
+              pw.RichText(
+                text: pw.TextSpan(children: [
+                  pw.TextSpan(
+                      text: '"$raw"  ',
+                      style: pw.TextStyle(
+                          fontSize: 10,
+                          color: muted,
+                          fontStyle: pw.FontStyle.italic)),
+                  pw.TextSpan(
+                      text:
+                          'P ${totalP}g · C ${totalC}g · F ${totalF}g',
+                      style: pw.TextStyle(
+                          fontSize: 8,
+                          color: muted,
+                          fontWeight: pw.FontWeight.bold)),
+                ]),
+              ),
             ],
-            pw.SizedBox(height: 4),
-            pw.Text(
-                'Protein ${totalP}g  ·  Carbs ${totalC}g  ·  Fat ${totalF}g',
-                style: pw.TextStyle(fontSize: 9, color: muted)),
             if (g.length > 1) ...[
               pw.SizedBox(height: 6),
               pw.Container(height: 0.5, color: muted),

@@ -1045,17 +1045,53 @@ class _WaterChipState extends ConsumerState<_WaterChip>
     with TickerProviderStateMixin {
   late final AnimationController _tap = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 600),
+    duration: const Duration(milliseconds: 700),
   );
   late final AnimationController _wave = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 3),
   )..repeat();
+  // Tween the displayed water level toward widget.progress so the wave
+  // rises smoothly when the user taps, rather than snapping to the new
+  // value.
+  late final AnimationController _levelCtl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+  Animation<double>? _levelAnim;
+  double _shownProgress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _shownProgress = widget.progress;
+    _levelCtl.addListener(() {
+      final v = _levelAnim?.value;
+      if (v != null && v != _shownProgress) {
+        setState(() => _shownProgress = v);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(_WaterChip old) {
+    super.didUpdateWidget(old);
+    if (widget.progress != old.progress) {
+      _levelAnim = Tween<double>(
+        begin: _shownProgress,
+        end: widget.progress,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)).animate(_levelCtl);
+      _levelCtl
+        ..reset()
+        ..forward();
+    }
+  }
 
   @override
   void dispose() {
     _tap.dispose();
     _wave.dispose();
+    _levelCtl.dispose();
     super.dispose();
   }
 
@@ -1082,7 +1118,11 @@ class _WaterChipState extends ConsumerState<_WaterChip>
         animation: Listenable.merge([_tap, _wave]),
         builder: (ctx, _) {
           final t = _tap.value;
-          final pulse = 1.0 - 0.04 * math.sin(t * math.pi).clamp(0.0, 1.0);
+          // Scale UP on tap (1.0 → 1.07 → 1.0) so the chip pops outward
+          // and feels responsive. Curves.easeOutBack adds a tiny
+          // overshoot at the peak for that satisfying snap.
+          final pop = math.sin(t * math.pi).clamp(0.0, 1.0);
+          final pulse = 1.0 + 0.07 * pop;
           return Transform.scale(
             scale: pulse,
             // Outer Stack lets the floating "+250 ml" hint escape the
@@ -1102,13 +1142,19 @@ class _WaterChipState extends ConsumerState<_WaterChip>
                   clipBehavior: Clip.antiAlias,
                   child: Stack(
                     children: [
-                      // Wave layer — clipped by the Container's rounded shape
+                      // Wave layer — clipped by the Container's rounded
+                      // shape. Uses _shownProgress (tweened) so the water
+                      // RISES smoothly to the new level after a tap.
                       Positioned.fill(
                         child: CustomPaint(
                           painter: _WaterWavePainter(
-                            progress: widget.progress,
+                            progress: _shownProgress,
                             wavePhase: _wave.value * 2 * math.pi,
                             color: AppColors.water,
+                            // Briefly amplify the wave during the tap
+                            // pulse so the water visibly "sloshes" as
+                            // the new sip is added. Returns to baseline.
+                            amplitudeBoost: pop,
                           ),
                         ),
                       ),
@@ -1227,18 +1273,23 @@ class _WaterWavePainter extends CustomPainter {
   final double progress;
   final double wavePhase;
   final Color color;
+  // 0..1 — briefly amplifies the wave amplitude during a tap so the
+  // water visibly sloshes when a new sip is added.
+  final double amplitudeBoost;
 
   _WaterWavePainter({
     required this.progress,
     required this.wavePhase,
     required this.color,
+    this.amplitudeBoost = 0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
     final clamped = progress.clamp(0.0, 1.0);
-    final amplitude = 3.0;
+    // Base 3px + up to +3px during a tap pulse for a "splash" feel.
+    final amplitude = 3.0 + 3.0 * amplitudeBoost.clamp(0.0, 1.0);
     // Pull the water surface down by the wave amplitude so the highest
     // wave crest never exceeds the intended fill line. Also overdraw a
     // few px past the bottom + sides so the rounded corner clip fills
@@ -1287,6 +1338,7 @@ class _WaterWavePainter extends CustomPainter {
   bool shouldRepaint(_WaterWavePainter old) =>
       old.progress != progress ||
       old.wavePhase != wavePhase ||
+      old.amplitudeBoost != amplitudeBoost ||
       old.color != color;
 }
 

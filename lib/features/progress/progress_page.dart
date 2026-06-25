@@ -17,6 +17,7 @@ import '../../state/providers.dart';
 import '../../theme.dart';
 import 'daily_report_page.dart';
 import 'measurement_entry_sheet.dart';
+import 'weight_logs_page.dart';
 
 class ProgressPage extends ConsumerWidget {
   const ProgressPage({super.key});
@@ -325,6 +326,19 @@ class _WeightSection extends StatelessWidget {
           children: [
             Expanded(child: Text('WEIGHT', style: AppText.label)),
             GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const WeightLogsPage()),
+              ),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Icon(Icons.history_rounded,
+                    size: 16, color: AppColors.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
               onTap: onLog,
               child: Row(
                 children: [
@@ -429,10 +443,6 @@ class _WeightSection extends StatelessWidget {
             ],
           ),
         ),
-        if (ordered.isNotEmpty) ...[
-          const SizedBox(height: 14),
-          _WeightLogList(measurements: ordered.reversed.toList()),
-        ],
       ],
     );
   }
@@ -445,299 +455,6 @@ class _WeightSection extends StatelessWidget {
     if (recent.isEmpty) return null;
     final sum = recent.fold<double>(0, (s, m) => s + m.weightKg);
     return sum / recent.length;
-  }
-}
-
-/// Newest-first list of weight logs. Tap a row to edit it; swipe
-/// right-to-left to delete with a 5 s undo. Lets users fix typos
-/// (e.g. 45.4 instead of 75.4) instead of being stuck with a wrong
-/// reading that throws off the trend.
-class _WeightLogList extends ConsumerWidget {
-  final List<BodyMeasurement> measurements;
-  const _WeightLogList({required this.measurements});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text('RECENT LOGS', style: AppText.label)),
-            Text('Edit or delete each log',
-                style: AppText.label.copyWith(
-                    color: AppColors.textTertiary, letterSpacing: 0.4)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        for (var i = 0; i < measurements.length; i++) ...[
-          _WeightLogRow(
-            measurement: measurements[i],
-            previous: i + 1 < measurements.length ? measurements[i + 1] : null,
-          ),
-          const SizedBox(height: 6),
-        ],
-      ],
-    );
-  }
-}
-
-class _WeightLogRow extends ConsumerWidget {
-  final BodyMeasurement measurement;
-  final BodyMeasurement? previous;
-  const _WeightLogRow({required this.measurement, this.previous});
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(measurementRepoProvider);
-    final snapshot = _clone(measurement);
-    await repo.delete(measurement.id);
-    await ref.read(adaptiveTargetsProvider).recomputeFromWeightTrend();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        backgroundColor: AppColors.surfaceHigh,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 5),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14)),
-        content: Text(
-          'Removed · ${measurement.weightKg.toStringAsFixed(1)} kg',
-          style: AppText.body.copyWith(color: AppColors.textPrimary),
-        ),
-        action: SnackBarAction(
-          label: 'Undo',
-          textColor: AppColors.accent,
-          onPressed: () async {
-            await repo.save(snapshot);
-            await ref
-                .read(adaptiveTargetsProvider)
-                .recomputeFromWeightTrend();
-          },
-        ),
-      ));
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final dateLabel = DateFormat('MMM d, y · h:mm a').format(measurement.date);
-    final delta =
-        previous != null ? measurement.weightKg - previous!.weightKg : null;
-    // Flag a suspiciously large swing — common typo case (e.g. 45.4
-    // instead of 75.4). Doesn't block, just nudges the eye.
-    final suspicious = delta != null && delta.abs() >= 5;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Dismissible(
-        key: ValueKey('weight-${measurement.id}'),
-        direction: DismissDirection.endToStart,
-        onDismissed: (_) => _delete(context, ref),
-        background: Container(
-          alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          color: AppColors.danger.withValues(alpha: 0.18),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.delete_outline_rounded,
-                  color: AppColors.danger, size: 20),
-              const SizedBox(width: 6),
-              Text('Delete',
-                  style: AppText.body.copyWith(
-                    color: AppColors.danger,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  )),
-            ],
-          ),
-        ),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () async {
-            await MeasurementEntrySheet.show(context, edit: measurement);
-          },
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(
-                  color: suspicious
-                      ? AppColors.danger.withValues(alpha: 0.45)
-                      : AppColors.stroke),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                              measurement.weightKg.toStringAsFixed(1),
-                              style: AppText.bigNumber
-                                  .copyWith(fontSize: 18)),
-                          const SizedBox(width: 4),
-                          Text('kg',
-                              style: AppText.meta.copyWith(
-                                  fontSize: 11,
-                                  color: AppColors.textTertiary)),
-                          if (delta != null) ...[
-                            const SizedBox(width: 10),
-                            Icon(
-                              delta < 0
-                                  ? Icons.trending_down_rounded
-                                  : delta > 0
-                                      ? Icons.trending_up_rounded
-                                      : Icons.trending_flat_rounded,
-                              size: 12,
-                              color: suspicious
-                                  ? AppColors.danger
-                                  : AppColors.textTertiary,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                                '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} kg',
-                                style: AppText.meta.copyWith(
-                                  fontSize: 11,
-                                  color: suspicious
-                                      ? AppColors.danger
-                                      : AppColors.textTertiary,
-                                  fontWeight: suspicious
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                )),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(dateLabel,
-                          style: AppText.meta.copyWith(
-                              fontSize: 11,
-                              color: AppColors.textTertiary)),
-                      if (suspicious) ...[
-                        const SizedBox(height: 4),
-                        Text('Looks like a big jump — edit if this is a typo.',
-                            style: AppText.meta.copyWith(
-                                fontSize: 10,
-                                color: AppColors.danger,
-                                fontWeight: FontWeight.w600)),
-                      ],
-                    ],
-                  ),
-                ),
-                _RowIconButton(
-                  icon: Icons.edit_rounded,
-                  tooltip: 'Edit',
-                  color: AppColors.accent,
-                  onTap: () => MeasurementEntrySheet.show(context,
-                      edit: measurement),
-                ),
-                const SizedBox(width: 6),
-                _RowIconButton(
-                  icon: Icons.delete_outline_rounded,
-                  tooltip: 'Delete',
-                  color: AppColors.danger,
-                  onTap: () => _confirmDelete(context, ref),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: Text('Delete this log?',
-            style: AppText.sectionTitle.copyWith(fontSize: 16)),
-        content: Text(
-          '${measurement.weightKg.toStringAsFixed(1)} kg on '
-          '${DateFormat('MMM d, y').format(measurement.date)} will be '
-          'removed. You can undo this for 5 seconds.',
-          style: AppText.body.copyWith(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete',
-                style: TextStyle(
-                  color: AppColors.danger,
-                  fontWeight: FontWeight.w800,
-                )),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    if (!context.mounted) return;
-    await _delete(context, ref);
-  }
-
-  BodyMeasurement _clone(BodyMeasurement m) {
-    return BodyMeasurement()
-      ..date = m.date
-      ..weightKg = m.weightKg
-      ..bodyFatPct = m.bodyFatPct
-      ..waistCm = m.waistCm
-      ..chestCm = m.chestCm
-      ..hipsCm = m.hipsCm
-      ..thighCm = m.thighCm
-      ..armCm = m.armCm
-      ..neckCm = m.neckCm
-      ..photoPath = m.photoPath
-      ..note = m.note
-      ..createdAt = m.createdAt;
-  }
-}
-
-class _RowIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final Color color;
-  final VoidCallback onTap;
-  const _RowIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: color),
-        ),
-      ),
-    );
   }
 }
 

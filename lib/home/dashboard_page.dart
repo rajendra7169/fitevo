@@ -1060,15 +1060,23 @@ class _WaterChipState extends ConsumerState<_WaterChip>
   );
   Animation<double>? _levelAnim;
   double _shownProgress = 0;
+  final GlobalKey _chipKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _shownProgress = widget.progress;
+    if (_shownProgress >= 1.0) _wave.stop();
     _levelCtl.addListener(() {
       final v = _levelAnim?.value;
       if (v != null && v != _shownProgress) {
         setState(() => _shownProgress = v);
+        // Pause the drift when the glass is full, resume when it isn't.
+        if (v >= 1.0 && _wave.isAnimating) {
+          _wave.stop();
+        } else if (v < 1.0 && !_wave.isAnimating) {
+          _wave.repeat();
+        }
       }
     });
   }
@@ -1084,7 +1092,33 @@ class _WaterChipState extends ConsumerState<_WaterChip>
       _levelCtl
         ..reset()
         ..forward();
+      // Goal-crossing celebration: only fires the moment progress moves
+      // from below the target up to or past it. Subsequent sips don't
+      // re-trigger.
+      if (old.progress < 1.0 && widget.progress >= 1.0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _celebrate();
+        });
+      }
     }
+  }
+
+  void _celebrate() {
+    final ctx = _chipKey.currentContext;
+    if (ctx == null) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached) return;
+    final origin = box.localToGlobal(box.size.center(Offset.zero));
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _WaterCelebration(
+        origin: origin,
+        onDone: () => entry.remove(),
+      ),
+    );
+    overlay.insert(entry);
   }
 
   @override
@@ -1132,10 +1166,15 @@ class _WaterChipState extends ConsumerState<_WaterChip>
               clipBehavior: Clip.none,
               children: [
                 Container(
+                  key: _chipKey,
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.stroke, width: 1),
+                    border: Border.all(
+                        color: _shownProgress >= 1.0
+                            ? AppColors.water.withValues(alpha: 0.5)
+                            : AppColors.stroke,
+                        width: 1),
                   ),
                   // antiAlias clips the wave to the rounded shape so the
                   // bottom-left + bottom-right corners are filled cleanly.
@@ -1287,14 +1326,33 @@ class _WaterWavePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
-    final clamped = progress.clamp(0.0, 1.0);
+    final clamped = progress.clamp(0.0, 1.5);
+
+    // At-or-above target: render a clean solid fill — no sine wave,
+    // no crest line. The glass is full; the water is still.
+    if (clamped >= 1.0) {
+      final fillPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: 0.32),
+            color.withValues(alpha: 0.18),
+          ],
+        ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      canvas.drawRect(
+          Rect.fromLTWH(-4, -4, size.width + 8, size.height + 8), fillPaint);
+      return;
+    }
+
+    final progressClamped = clamped.clamp(0.0, 1.0);
     // Base 3px + up to +3px during a tap pulse for a "splash" feel.
     final amplitude = 3.0 + 3.0 * amplitudeBoost.clamp(0.0, 1.0);
     // Pull the water surface down by the wave amplitude so the highest
     // wave crest never exceeds the intended fill line. Also overdraw a
     // few px past the bottom + sides so the rounded corner clip fills
     // cleanly with no rendering seam.
-    final waterLevel = size.height * (1 - clamped) + amplitude;
+    final waterLevel = size.height * (1 - progressClamped) + amplitude;
 
     final path = Path()..moveTo(-4, size.height + 4);
     path.lineTo(-4, waterLevel);
@@ -1747,4 +1805,209 @@ class _MealCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── water-goal celebration overlay ────────────────────────────────────────
+
+/// Fires once when the user crosses the daily water target. Renders a
+/// full-screen, ignore-pointer overlay: a soft water-tint flash, a
+/// burst of water-drop particles emanating from [origin], a hero text
+/// (💧 + "Hydration goal!"), and an auto-dismiss after ~2.4s.
+class _WaterCelebration extends StatefulWidget {
+  final Offset origin;
+  final VoidCallback onDone;
+  const _WaterCelebration({required this.origin, required this.onDone});
+
+  @override
+  State<_WaterCelebration> createState() => _WaterCelebrationState();
+}
+
+class _WaterCelebrationState extends State<_WaterCelebration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  );
+  late final List<_WaterParticle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+    final rng = math.Random();
+    _particles = List.generate(44, (_) {
+      final angle = rng.nextDouble() * 2 * math.pi;
+      // Bias velocity upward so droplets shoot up + outward then fall.
+      final speed = 140 + rng.nextDouble() * 220;
+      return _WaterParticle(
+        vx: math.cos(angle) * speed,
+        vy: math.sin(angle) * speed - 100,
+        size: 4 + rng.nextDouble() * 7,
+        spin: (rng.nextDouble() - 0.5) * 12,
+        alphaBase: 0.7 + rng.nextDouble() * 0.3,
+      );
+    });
+    _ctl.addStatusListener((s) {
+      if (s == AnimationStatus.completed) widget.onDone();
+    });
+    _ctl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _ctl,
+        builder: (ctx, _) {
+          final t = _ctl.value;
+          // Backdrop flash: rise to 0.10 alpha then fade out.
+          final backdrop =
+              0.10 * math.sin(t * math.pi).clamp(0.0, 1.0);
+          // Hero text: pop in over the first 600ms, hold, then fade.
+          final textIn = (t / 0.25).clamp(0.0, 1.0);
+          final textScale = Curves.elasticOut.transform(textIn);
+          final textOut = ((t - 0.75) / 0.25).clamp(0.0, 1.0);
+          final textOpacity = (1 - textOut).clamp(0.0, 1.0);
+          return Stack(
+            children: [
+              // Soft water-tint full-screen flash
+              Positioned.fill(
+                child: ColoredBox(
+                  color: AppColors.water.withValues(alpha: backdrop),
+                ),
+              ),
+              // Particle burst from the chip's origin
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _WaterParticlePainter(
+                    particles: _particles,
+                    origin: widget.origin,
+                    t: t,
+                    color: AppColors.water,
+                  ),
+                ),
+              ),
+              // Hero text near the center of the screen
+              Center(
+                child: Opacity(
+                  opacity: textOpacity,
+                  child: Transform.scale(
+                    scale: textScale,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppColors.water.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.water.withValues(alpha: 0.25),
+                            blurRadius: 28,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('💧',
+                              style: TextStyle(fontSize: 48)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Hydration goal!',
+                            style: AppText.giantNumber.copyWith(
+                              fontSize: 26,
+                              color: AppColors.water,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Great job — keep flowing.',
+                            style: AppText.body.copyWith(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _WaterParticle {
+  final double vx;
+  final double vy;
+  final double size;
+  final double spin;
+  final double alphaBase;
+  _WaterParticle({
+    required this.vx,
+    required this.vy,
+    required this.size,
+    required this.spin,
+    required this.alphaBase,
+  });
+}
+
+class _WaterParticlePainter extends CustomPainter {
+  final List<_WaterParticle> particles;
+  final Offset origin;
+  final double t; // 0..1
+  final Color color;
+  _WaterParticlePainter({
+    required this.particles,
+    required this.origin,
+    required this.t,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Convert global origin to local. The overlay's RenderObject is at
+    // (0,0) global so this is effectively identity, but we use the
+    // origin directly for the position math.
+    const gravity = 700.0; // px/s^2 — drop pulls particles back down
+    final opacity = math.max(0.0, 1 - t);
+    for (final p in particles) {
+      // Position = origin + v*t + 0.5*g*t^2 (gravity on Y only)
+      final x = origin.dx + p.vx * t;
+      final y = origin.dy + p.vy * t + 0.5 * gravity * t * t;
+      final paint = Paint()
+        ..color = color.withValues(alpha: p.alphaBase * opacity);
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate(p.spin * t);
+      // Teardrop shape — narrow top, rounded bottom
+      final s = p.size * (1 + 0.2 * math.sin(t * math.pi));
+      final path = Path()
+        ..moveTo(0, -s)
+        ..quadraticBezierTo(s * 0.7, -s * 0.3, s * 0.5, s * 0.35)
+        ..quadraticBezierTo(0, s, -s * 0.5, s * 0.35)
+        ..quadraticBezierTo(-s * 0.7, -s * 0.3, 0, -s)
+        ..close();
+      canvas.drawPath(path, paint);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WaterParticlePainter old) =>
+      old.t != t || old.origin != origin;
 }

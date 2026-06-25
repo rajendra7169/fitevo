@@ -790,23 +790,20 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Sweep gradient SPANS THE ACTUAL ARC (not the full 360°) so the
-    // full saffron → mid → gold blend is visible at any progress.
-    // Adds a midpoint stop (linear blend of from/to) for an even,
-    // continuous transition with no perceived "cut" at the arc tip.
-    final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
-    final mid =
-        Color.lerp(AppColors.calorieFrom, AppColors.calorieTo, 0.5)!;
+    final clamped = progress.clamp(0.0, 1.0);
+    if (clamped <= 0) return;
+    final sweep = 2 * math.pi * clamped;
+
+    // Sweep gradient spans only the visible arc, starting at 12 o'clock.
+    // calorieFrom (saffron) sits at the arc's start; calorieTo (gold)
+    // sits at the arc's current end. The two colors blend smoothly
+    // across the actual painted arc instead of being distributed over
+    // the full 360° (which produced a "hard cut" at low progress).
     final fg = Paint()
       ..shader = SweepGradient(
         startAngle: -math.pi / 2,
         endAngle: -math.pi / 2 + sweep,
-        colors: [
-          AppColors.calorieFrom,
-          mid,
-          AppColors.calorieTo,
-        ],
-        stops: const [0.0, 0.5, 1.0],
+        colors: [AppColors.calorieFrom, AppColors.calorieTo],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth

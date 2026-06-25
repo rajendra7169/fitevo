@@ -188,6 +188,10 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                       _WeekStrip(
                         selected: _selectedDate,
                         onPick: _selectDate,
+                        mode: _mode,
+                        profile: profile,
+                        foods: allFoods,
+                        sessions: allSessions,
                       ),
                       const SizedBox(height: 18),
                       _ModeToggle(mode: _mode, onChange: _switchMode),
@@ -250,7 +254,18 @@ class _DateHeader extends StatelessWidget {
 class _WeekStrip extends StatefulWidget {
   final DateTime selected;
   final void Function(DateTime) onPick;
-  const _WeekStrip({required this.selected, required this.onPick});
+  final _ReportMode mode;
+  final Profile profile;
+  final List<FoodEntry> foods;
+  final List<WorkoutSession> sessions;
+  const _WeekStrip({
+    required this.selected,
+    required this.onPick,
+    required this.mode,
+    required this.profile,
+    required this.foods,
+    required this.sessions,
+  });
 
   @override
   State<_WeekStrip> createState() => _WeekStripState();
@@ -283,10 +298,71 @@ class _WeekStripState extends State<_WeekStrip> {
     setState(() => _weekStart = _weekStart.add(Duration(days: days)));
   }
 
+  /// Pre-group foods + sessions by dateKey so the per-day mini-ring
+  /// computation is O(N) per day rather than scanning every day.
+  Map<String, List<FoodEntry>> _foodsByDay() {
+    final m = <String, List<FoodEntry>>{};
+    for (final e in widget.foods) {
+      (m[e.dateKey] ??= <FoodEntry>[]).add(e);
+    }
+    return m;
+  }
+
+  Map<String, List<WorkoutSession>> _sessionsByDay() {
+    final m = <String, List<WorkoutSession>>{};
+    for (final s in widget.sessions) {
+      (m[s.dateKey] ??= <WorkoutSession>[]).add(s);
+    }
+    return m;
+  }
+
+  _DayRingValues _ringsForDay(
+      DateTime day,
+      Map<String, List<FoodEntry>> foodsByDay,
+      Map<String, List<WorkoutSession>> sessionsByDay) {
+    final key = DailyLog.keyFor(day);
+    if (widget.mode == _ReportMode.food) {
+      final dayFoods = foodsByDay[key] ?? const <FoodEntry>[];
+      final t = NutritionRepo.sumEntries(dayFoods);
+      final calT = widget.profile.effectiveCalorieTarget;
+      final pT = widget.profile.effectiveProteinTarget;
+      final cT = widget.profile.effectiveCarbTarget;
+      return _DayRingValues(
+        outer: calT == 0 ? 0 : t.calories / calT,
+        middle: pT == 0 ? 0 : t.proteinG / pT,
+        inner: cT == 0 ? 0 : t.carbsG / cT,
+        outerColor: AppColors.calorieFrom,
+        middleColor: AppColors.protein,
+        innerColor: AppColors.carbs,
+      );
+    } else {
+      final daySessions =
+          sessionsByDay[key] ?? const <WorkoutSession>[];
+      final totalMin = daySessions.fold<int>(
+          0, (s, w) => s + w.duration.inMinutes);
+      final totalSets =
+          daySessions.fold<int>(0, (s, w) => s + w.sets.length);
+      final exCount = daySessions
+          .expand((s) => s.sets.map((x) => x.exerciseName))
+          .toSet()
+          .length;
+      return _DayRingValues(
+        outer: totalMin / 30,
+        middle: totalSets / 12,
+        inner: exCount / 4,
+        outerColor: AppColors.danger,
+        middleColor: AppColors.warning,
+        innerColor: AppColors.water,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
     final todayKey = DateTime(today.year, today.month, today.day);
+    final foodsByDay = _foodsByDay();
+    final sessionsByDay = _sessionsByDay();
     return Row(
       children: [
         _ChevronButton(
@@ -301,11 +377,13 @@ class _WeekStripState extends State<_WeekStrip> {
               final isSelected = day == widget.selected;
               final isFuture = day.isAfter(todayKey);
               final isToday = day == todayKey;
+              final rings = _ringsForDay(day, foodsByDay, sessionsByDay);
               return _DayChip(
                 date: day,
                 selected: isSelected,
                 disabled: isFuture,
                 today: isToday,
+                rings: rings,
                 onTap: () => widget.onPick(day),
               );
             }),
@@ -318,6 +396,23 @@ class _WeekStripState extends State<_WeekStrip> {
       ],
     );
   }
+}
+
+class _DayRingValues {
+  final double outer;
+  final double middle;
+  final double inner;
+  final Color outerColor;
+  final Color middleColor;
+  final Color innerColor;
+  const _DayRingValues({
+    required this.outer,
+    required this.middle,
+    required this.inner,
+    required this.outerColor,
+    required this.middleColor,
+    required this.innerColor,
+  });
 }
 
 class _ChevronButton extends StatelessWidget {
@@ -343,12 +438,14 @@ class _DayChip extends StatelessWidget {
   final bool selected;
   final bool disabled;
   final bool today;
+  final _DayRingValues rings;
   final VoidCallback onTap;
   const _DayChip({
     required this.date,
     required this.selected,
     required this.disabled,
     required this.today,
+    required this.rings,
     required this.onTap,
   });
 
@@ -393,6 +490,26 @@ class _DayChip extends StatelessWidget {
                   color: dayColor,
                   fontWeight: FontWeight.w700,
                 )),
+          ),
+          const SizedBox(height: 6),
+          Opacity(
+            opacity: disabled ? 0.3 : 1,
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CustomPaint(
+                painter: _TripleRingPainter(
+                  outerProgress: rings.outer,
+                  middleProgress: rings.middle,
+                  innerProgress: rings.inner,
+                  outerColor: rings.outerColor,
+                  middleColor: rings.middleColor,
+                  innerColor: rings.innerColor,
+                  strokeWidth: 2.6,
+                  gap: 0.8,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -697,14 +814,17 @@ class _TripleRingPainter extends CustomPainter {
     required this.outerColor,
     required this.middleColor,
     required this.innerColor,
+    this.strokeWidth = 18,
+    this.gap = 4,
   });
+
+  final double strokeWidth;
+  final double gap;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final outerRadius = size.width / 2 - 8;
-    const strokeWidth = 12.0;
-    const gap = 4.0;
+    final outerRadius = size.width / 2 - strokeWidth / 2 - 2;
     _drawRing(canvas, center, outerRadius, strokeWidth, outerColor,
         outerProgress);
     _drawRing(canvas, center, outerRadius - strokeWidth - gap, strokeWidth,

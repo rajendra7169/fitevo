@@ -1020,9 +1020,13 @@ class _WaterFiberChips extends ConsumerWidget {
   }
 }
 
-/// Water chip on the dashboard. Tap = quick-add 250ml (with a wave
-/// fill animation + a floating "+250ml" hint). Long-press opens the
-/// full WaterDetailPage with timeline + smart reminders.
+/// Water chip on the dashboard. Tap = quick-add 250 ml with a brief
+/// pulse + a floating "+250 ml" hint. Long-press opens WaterDetailPage
+/// with the timeline + smart reminders.
+///
+/// Visually identical to the Fiber/Sodium chips so the row stays clean.
+/// The drama (animated wave, hero ring, etc.) lives on the detail page
+/// where it has room to breathe.
 class _WaterChip extends ConsumerStatefulWidget {
   final int consumedMl;
   final int targetMl;
@@ -1038,20 +1042,15 @@ class _WaterChip extends ConsumerStatefulWidget {
 }
 
 class _WaterChipState extends ConsumerState<_WaterChip>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late final AnimationController _tap = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 600),
   );
-  late final AnimationController _wave = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 3),
-  )..repeat();
 
   @override
   void dispose() {
     _tap.dispose();
-    _wave.dispose();
     super.dispose();
   }
 
@@ -1075,185 +1074,147 @@ class _WaterChipState extends ConsumerState<_WaterChip>
       onLongPress: _openDetail,
       behavior: HitTestBehavior.opaque,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_tap, _wave]),
+        animation: _tap,
         builder: (ctx, _) {
-          // Brief scale pulse on tap so the user knows the tap registered.
-          final pulse = 1.0 -
-              0.04 *
-                  (math.sin(_tap.value * math.pi).clamp(0.0, 1.0));
-          // Floating "+250ml" hint rises and fades after a tap.
-          final hintT = _tap.value;
+          final t = _tap.value;
+          // Single-shot scale pulse: down to 0.96 then back, peaks mid-tap.
+          final pulse = 1.0 - 0.04 * math.sin(t * math.pi).clamp(0.0, 1.0);
           return Transform.scale(
             scale: pulse,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                children: [
-                  // Base chip
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.stroke, width: 1),
-                    ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.stroke, width: 1),
                   ),
-                  // Wave fill background — height = progress, animated drift
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: _WaterWavePainter(
-                        progress: widget.progress,
-                        wavePhase: _wave.value * 2 * math.pi,
-                        color: AppColors.water,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 26,
+                            height: 26,
+                            decoration: BoxDecoration(
+                              color: AppColors.water.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.water_drop_rounded,
+                                size: 14, color: AppColors.water),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Water',
+                              style: AppText.meta.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textTertiary,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.add_rounded,
+                              size: 14, color: AppColors.water),
+                        ],
                       ),
-                    ),
-                  ),
-                  // Content layer
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      const SizedBox(height: 8),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: (widget.consumedMl / 1000)
+                                    .toStringAsFixed(1),
+                                style: AppText.bigNumber.copyWith(fontSize: 18),
+                              ),
+                              TextSpan(
+                                text:
+                                    ' /${(widget.targetMl / 1000).toStringAsFixed(1)}L',
+                                style: AppText.meta.copyWith(
+                                    fontSize: 11,
+                                    color: AppColors.textTertiary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Thin progress underline — matches the macro chips' visual
+                      // language. Animates smoothly when the value changes.
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Stack(
                           children: [
                             Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: AppColors.water
-                                    .withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Icons.water_drop_rounded,
-                                  size: 14, color: AppColors.water),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                'Water',
-                                style: AppText.meta.copyWith(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textTertiary,
-                                  letterSpacing: 0.6,
+                                height: 3, color: AppColors.surfaceHigh),
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(
+                                  begin: 0,
+                                  end: widget.progress.clamp(0.0, 1.0)),
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeOutCubic,
+                              builder: (_, v, _) => FractionallySizedBox(
+                                widthFactor: v,
+                                child: Container(
+                                  height: 3,
+                                  color: AppColors.water,
                                 ),
                               ),
                             ),
-                            Icon(Icons.add_rounded,
-                                size: 14, color: AppColors.water),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: RichText(
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text:
-                                      (widget.consumedMl / 1000).toStringAsFixed(1),
-                                  style: AppText.bigNumber.copyWith(fontSize: 18),
-                                ),
-                                TextSpan(
-                                  text:
-                                      ' /${(widget.targetMl / 1000).toStringAsFixed(1)}L',
-                                  style: AppText.meta.copyWith(
-                                      fontSize: 11,
-                                      color: AppColors.textTertiary),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  // Floating "+250ml" hint after tap
-                  if (hintT > 0 && hintT < 1)
-                    Positioned(
-                      right: 10,
-                      top: 6 - (12 * hintT),
-                      child: Opacity(
-                        opacity: (1 - hintT).clamp(0.0, 1.0),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.water,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '+250ml',
-                            style: TextStyle(
-                              color: AppColors.onAccent,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.3,
+                ),
+                // Floating "+250 ml" hint that rises out the top after a tap.
+                // Sits outside the chip's clip so it can float upward.
+                if (t > 0 && t < 1)
+                  Positioned(
+                    right: 8,
+                    top: -10 - (16 * t),
+                    child: Opacity(
+                      opacity: (1 - t).clamp(0.0, 1.0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.water,
+                          borderRadius: BorderRadius.circular(7),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.water.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
+                          ],
+                        ),
+                        child: Text(
+                          '+250 ml',
+                          style: TextStyle(
+                            color: AppColors.onAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           );
         },
       ),
     );
   }
-}
-
-/// Animated water-level inside the chip. The water surface is a low-
-/// amplitude sine wave that drifts continuously; height = progress.
-class _WaterWavePainter extends CustomPainter {
-  final double progress;
-  final double wavePhase;
-  final Color color;
-
-  _WaterWavePainter({
-    required this.progress,
-    required this.wavePhase,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (progress <= 0) return;
-    final waterLevel =
-        size.height * (1 - progress.clamp(0.0, 1.0)); // y of surface
-    final amplitude = 2.5; // px
-    final wavelength = size.width;
-
-    final path = Path()..moveTo(0, size.height);
-    path.lineTo(0, waterLevel);
-    for (var x = 0.0; x <= size.width; x += 4) {
-      final y = waterLevel +
-          amplitude *
-              math.sin((x / wavelength) * 2 * math.pi + wavePhase);
-      path.lineTo(x, y);
-    }
-    path.lineTo(size.width, size.height);
-    path.close();
-
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          color.withValues(alpha: 0.22),
-          color.withValues(alpha: 0.08),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(_WaterWavePainter old) =>
-      old.progress != progress ||
-      old.wavePhase != wavePhase ||
-      old.color != color;
 }
 
 class _StatChip extends StatelessWidget {

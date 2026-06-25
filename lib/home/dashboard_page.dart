@@ -791,14 +791,39 @@ class _RingPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, bg);
 
-    // Status-colored ring: green when you have room, yellow as you
-    // approach target, orange near target, red when over. The color
-    // signals "how am I doing" at a glance — much more useful than a
-    // brand-color sweep that means nothing semantically.
-    final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
-    final color = _statusColor(progress);
+    // Journey gradient: arc starts green (where you began the day) and
+    // transitions through gold / saffron / red based on how far through
+    // the day's consumption you've gotten. Each zone boundary is mapped
+    // to its actual position on the visible arc, so a 60% ring shows
+    // green near the 12 o'clock start and ends in gold-toward-saffron.
+    final p = progress.clamp(0.0001, 2.0);
+    final sweep = 2 * math.pi * p.clamp(0.0, 1.0);
+
+    final colors = <Color>[AppColors.success];
+    final stops = <double>[0.0];
+    void addStop(double threshold, Color color) {
+      if (p > threshold) {
+        colors.add(color);
+        stops.add(threshold / p);
+      }
+    }
+    addStop(0.30, AppColors.success);
+    addStop(0.60, AppColors.warning);
+    addStop(0.85, AppColors.calorieFrom);
+    addStop(1.0, AppColors.danger);
+    // Final stop at 1.0 = the current zone color (computed by the
+    // same _statusColor function so the end of the arc precisely matches
+    // the user's current "where am I" status).
+    colors.add(_statusColor(p));
+    stops.add(1.0);
+
     final fg = Paint()
-      ..color = color
+      ..shader = SweepGradient(
+        startAngle: -math.pi / 2,
+        endAngle: -math.pi / 2 + sweep,
+        colors: colors,
+        stops: stops,
+      ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;

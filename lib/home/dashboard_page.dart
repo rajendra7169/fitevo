@@ -806,29 +806,26 @@ class _RingPainter extends CustomPainter {
     canvas.drawArc(rect, -math.pi / 2, sweep, false, fg);
   }
 
-  /// Status color:
-  ///   0 – 0.65   → solid leaf-green (you have room)
-  ///   0.65 – 0.9 → green lerping to gold (getting close)
-  ///   0.9 – 1.0  → gold lerping to saffron (near target)
-  ///   1.0 – 1.15 → saffron lerping to berry-red (over)
-  ///   1.15+      → solid danger-red
-  ///
-  /// Keeping green solid through the 65% mark stops the "everything
-  /// looks olive" issue — lerping success→warning earlier landed in
-  /// the muddy mid-zone for most realistic progress values.
+  /// Status color, tightened so the user sees the transition by the
+  /// halfway mark instead of staying green until ~65%.
+  ///   0 – 0.30   → solid leaf-green (lots of room)
+  ///   0.30 – 0.60 → green lerping to gold (mid-day pacing)
+  ///   0.60 – 0.85 → gold lerping to saffron (getting close)
+  ///   0.85 – 1.0  → saffron lerping to berry-red (almost / hit target)
+  ///   1.0+         → solid danger-red (over target)
   static Color _statusColor(double progress) {
-    if (progress <= 0.65) return AppColors.success;
-    if (progress <= 0.9) {
+    if (progress <= 0.30) return AppColors.success;
+    if (progress <= 0.60) {
       return Color.lerp(AppColors.success, AppColors.warning,
-          (progress - 0.65) / 0.25)!;
+          (progress - 0.30) / 0.30)!;
+    }
+    if (progress <= 0.85) {
+      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
+          (progress - 0.60) / 0.25)!;
     }
     if (progress <= 1.0) {
-      return Color.lerp(AppColors.warning, AppColors.calorieFrom,
-          (progress - 0.9) / 0.1)!;
-    }
-    if (progress <= 1.15) {
       return Color.lerp(AppColors.calorieFrom, AppColors.danger,
-          (progress - 1.0) / 0.15)!;
+          (progress - 0.85) / 0.15)!;
     }
     return AppColors.danger;
   }

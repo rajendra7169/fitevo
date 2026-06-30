@@ -80,6 +80,9 @@ dependencies:
   image_picker: ^1.1.2
   speech_to_text: ^7.4.0
 
+  # Network image caching for workout card backgrounds
+  cached_network_image: ^3.4.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

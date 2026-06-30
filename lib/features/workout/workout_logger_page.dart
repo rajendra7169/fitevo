@@ -535,15 +535,30 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
+        // In focus mode let the gym photo bleed behind the app bar.
+        extendBodyBehindAppBar:
+            _view == _LoggerView.focus && !_starting,
         appBar: AppBar(
-          backgroundColor: AppColors.bg,
+          backgroundColor: _view == _LoggerView.focus && !_starting
+              ? Colors.transparent
+              : AppColors.bg,
           elevation: 0,
-          title: Text(widget.day.name, style: AppText.sectionTitle),
-          iconTheme: IconThemeData(color: AppColors.textPrimary),
+          scrolledUnderElevation: 0,
+          title: Text(
+            widget.day.name,
+            style: AppText.sectionTitle.copyWith(
+              color: _view == _LoggerView.focus && !_starting
+                  ? Colors.white
+                  : AppColors.textPrimary,
+            ),
+          ),
+          iconTheme: IconThemeData(
+            color: _view == _LoggerView.focus && !_starting
+                ? Colors.white
+                : AppColors.textPrimary,
+          ),
           actions: [
-            // Focus ↔ list toggle. Focus is the new big-number per-set
-            // view; list keeps the original scoreboard so power users
-            // who like editing every row at once aren't blocked.
+            // Focus ↔ list toggle.
             IconButton(
               onPressed: () {
                 setState(() {
@@ -559,15 +574,13 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                 _view == _LoggerView.focus
                     ? Icons.view_agenda_outlined
                     : Icons.crop_square_rounded,
-                color: AppColors.textPrimary,
               ),
               tooltip: _view == _LoggerView.focus
                   ? 'Show full list'
                   : 'Show focus view',
             ),
             PopupMenuButton<String>(
-              icon: Icon(Icons.more_vert_rounded,
-                  color: AppColors.textPrimary),
+              icon: const Icon(Icons.more_vert_rounded),
               color: AppColors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -614,8 +627,7 @@ class _WorkoutLoggerPageState extends ConsumerState<WorkoutLoggerPage> {
                       widget.day.items.isNotEmpty)
                     Positioned.fill(
                       child: WorkoutPhotoBackground(
-                        assetPath:
-                            WorkoutPhotos.forDayName(widget.day.name),
+                        dayName: widget.day.name,
                         overlayStrength: 0.78,
                         child: const SizedBox.shrink(),
                       ),

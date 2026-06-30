@@ -2236,7 +2236,7 @@ class _WorkoutCard extends ConsumerWidget {
         label: 'TODAY',
         title: day.name.toUpperCase(),
         subtitle: '${day.items.length} exercises · ${routine.name}',
-        photoPath: WorkoutPhotos.forDayName(day.name),
+        dayName: day.name,
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -2367,13 +2367,13 @@ class _WorkoutPhotoCard extends StatelessWidget {
   final String label;
   final String title;
   final String subtitle;
-  final String photoPath;
+  final String dayName;
   final VoidCallback onTap;
   const _WorkoutPhotoCard({
     required this.label,
     required this.title,
     required this.subtitle,
-    required this.photoPath,
+    required this.dayName,
     required this.onTap,
   });
 
@@ -2387,7 +2387,7 @@ class _WorkoutPhotoCard extends StatelessWidget {
         child: SizedBox(
           height: 180,
           child: WorkoutPhotoBackground(
-            assetPath: photoPath,
+            dayName: dayName,
             overlayStrength: 0.5,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),

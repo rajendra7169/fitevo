@@ -74,6 +74,7 @@ class _EmptyStateState extends ConsumerState<_EmptyState> {
       await ref.read(routineGeneratorProvider).generateAndActivate(
             goal: widget.profile.goal,
             trainingDaysPerWeek: widget.profile.trainingDaysPerWeek,
+            restDays: widget.profile.restDays.toList(),
           );
     } catch (e) {
       if (!mounted) return;
@@ -536,6 +537,7 @@ class _RoutineView extends ConsumerWidget {
       await ref.read(routineGeneratorProvider).generateAndActivate(
             goal: profile.goal,
             trainingDaysPerWeek: profile.trainingDaysPerWeek,
+            restDays: profile.restDays.toList(),
           );
     } catch (e) {
       if (!context.mounted) return;

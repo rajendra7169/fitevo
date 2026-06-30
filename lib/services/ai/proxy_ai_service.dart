@@ -68,11 +68,13 @@ class ProxyAiService implements AiService {
     required FitnessGoal goal,
     required int trainingDaysPerWeek,
     required List<String> libraryExerciseNames,
+    List<int> restWeekdays = const [],
   }) async {
     final json = await _postJson('/routine/generate', {
       'goal': goal.name,
       'trainingDaysPerWeek': trainingDaysPerWeek,
       'library': libraryExerciseNames,
+      if (restWeekdays.isNotEmpty) 'restWeekdays': restWeekdays,
     });
     return _parseRoutinePlan(json);
   }

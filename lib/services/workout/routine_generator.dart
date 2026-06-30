@@ -21,6 +21,7 @@ class RoutineGenerator {
   Future<Routine> generateAndActivate({
     required FitnessGoal goal,
     required int trainingDaysPerWeek,
+    List<int> restDays = const [],
   }) async {
     final library = await exercises.all();
     final libraryNames = library.map((e) => e.name).toList();
@@ -29,6 +30,7 @@ class RoutineGenerator {
       goal: goal,
       trainingDaysPerWeek: trainingDaysPerWeek,
       libraryExerciseNames: libraryNames,
+      restWeekdays: restDays,
     );
 
     final routine = Routine()

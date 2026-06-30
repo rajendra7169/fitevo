@@ -471,6 +471,7 @@ class GeminiAiService implements AiService {
     required FitnessGoal goal,
     required int trainingDaysPerWeek,
     required List<String> libraryExerciseNames,
+    List<int> restWeekdays = const [],
   }) async {
     final model = _ensureRoutineModel();
     final goalLabel = switch (goal) {
@@ -479,11 +480,15 @@ class GeminiAiService implements AiService {
       FitnessGoal.recomp => 'body recomposition (slow change)',
       FitnessGoal.generalFitness => 'general fitness and strength',
     };
+    const weekdayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final restNote = restWeekdays.isEmpty
+        ? 'Spread training across the week sensibly with rest days.'
+        : 'IMPORTANT: The user has designated ${restWeekdays.map((d) => weekdayNames[d]).join(' and ')} as rest day(s). You MUST mark those weekdays as is_rest:true and schedule NO training on them.';
     final prompt =
         'Build a beginner-friendly $trainingDaysPerWeek-day-per-week routine for someone whose goal is $goalLabel.\n'
         'Prefer exercises from this library when they fit:\n${libraryExerciseNames.join(', ')}.\n'
         'For exercises not in the library, use widely-known names.\n'
-        'Spread training across the week sensibly with rest days. Return JSON only.';
+        '$restNote Return JSON only.';
     const maxAttempts = 3;
     Object? lastError;
     for (var attempt = 0; attempt < maxAttempts; attempt++) {

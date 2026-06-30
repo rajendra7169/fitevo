@@ -153,6 +153,7 @@ abstract class AiService {
     required FitnessGoal goal,
     required int trainingDaysPerWeek,
     required List<String> libraryExerciseNames,
+    List<int> restWeekdays = const [],
   });
   Future<String> coachChat({
     required String userContext,

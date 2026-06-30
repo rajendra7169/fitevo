@@ -171,6 +171,69 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     }
   }
 
+  Future<void> _restoreFromCloud(BuildContext ctx) async {
+    final dateLabel =
+        DateFormat('MMM d, y').format(_selectedDate);
+    final ok = await showDialog<bool>(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Restore $dateLabel from backup?',
+            style: AppText.sectionTitle),
+        content: Text(
+          'This replaces all food entries and activity data for this day '
+          'with the last cloud backup.\n\n'
+          'Note: walking/cardio will also be restored from cloud (data '
+          'backed up before today\'s fix may show 0 — re-enter it '
+          'with the edit button after restoring).',
+          style: AppText.body.copyWith(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: AppText.body
+                    .copyWith(color: AppColors.textSecondary)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accent),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref
+          .read(syncServiceProvider)
+          .restoreDay(_selectedDate);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppColors.surfaceHigh,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Text('Restored from backup.',
+            style: AppText.body.copyWith(color: AppColors.textPrimary)),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppColors.surfaceHigh,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Text('Restore failed: $e',
+            style:
+                AppText.body.copyWith(color: AppColors.danger)),
+      ));
+    }
+  }
+
   Future<void> _generateSummary({
     required Profile profile,
     required DailyTotals totals,
@@ -1137,6 +1200,27 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                       daySessions: daySessions,
                       dayLog: dayLog,
                     ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert_rounded,
+                color: AppColors.textSecondary),
+            color: AppColors.surface,
+            onSelected: (v) {
+              if (v == 'restore') _restoreFromCloud(context);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'restore',
+                child: Row(children: [
+                  Icon(Icons.cloud_download_rounded,
+                      size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 10),
+                  Text('Restore from backup',
+                      style: AppText.body
+                          .copyWith(color: AppColors.textPrimary)),
+                ]),
+              ),
+            ],
           ),
         ],
       ),

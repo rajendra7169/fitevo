@@ -242,18 +242,85 @@ class SyncService {
         'steps': l.steps,
         'heartRateAvg': l.heartRateAvg,
         'sleepMinutes': l.sleepMinutes,
+        'walkingKmToday': l.walkingKmToday,
+        'runningKmToday': l.runningKmToday,
+        'otherCardioMinutes': l.otherCardioMinutes,
+        'activityNote': l.activityNote,
+        'waterEntries': l.waterEntries
+            .map((e) => {'minutesOfDay': e.minutesOfDay, 'ml': e.ml})
+            .toList(),
         'updatedAt': l.updatedAt.toIso8601String(),
       };
 
   DailyLog _dailyLogFromMap(Map<String, dynamic> m) {
+    final weRaw = m['waterEntries'];
+    final waterEntries = <WaterEntry>[];
+    if (weRaw is List) {
+      for (final item in weRaw) {
+        if (item is Map) {
+          waterEntries.add(WaterEntry()
+            ..minutesOfDay = (item['minutesOfDay'] as num?)?.toInt() ?? 0
+            ..ml = (item['ml'] as num?)?.toInt() ?? 0);
+        }
+      }
+    }
     return DailyLog()
       ..dateKey = (m['dateKey'] as String?) ?? ''
       ..waterMl = (m['waterMl'] as num?)?.toInt() ?? 0
       ..steps = (m['steps'] as num?)?.toInt()
       ..heartRateAvg = (m['heartRateAvg'] as num?)?.toInt()
       ..sleepMinutes = (m['sleepMinutes'] as num?)?.toInt()
+      ..walkingKmToday = (m['walkingKmToday'] as num?)?.toDouble() ?? 0
+      ..runningKmToday = (m['runningKmToday'] as num?)?.toDouble() ?? 0
+      ..otherCardioMinutes = (m['otherCardioMinutes'] as num?)?.toInt() ?? 0
+      ..activityNote = m['activityNote'] as String?
+      ..waterEntries = waterEntries
       ..updatedAt = DateTime.tryParse(m['updatedAt'] as String? ?? '') ??
           DateTime.now();
+  }
+
+  /// Restore a single day's food entries and daily log from Firestore,
+  /// overwriting what's currently in local Isar for that date.
+  /// Walking/activity data in the cloud is restored too (if it was ever
+  /// pushed with the updated sync map — entries pushed before this fix
+  /// will restore with walking = 0, so the user will need to re-enter it).
+  Future<void> restoreDay(DateTime date) async {
+    final dateKey = DailyLog.keyFor(date);
+
+    // Firestore indexes on sub-collections aren't always available — fetch
+    // all food entries and filter locally to avoid needing a composite index.
+    final allEntriesSnap = await _foodEntries().get();
+    final dayEntries = allEntriesSnap.docs
+        .where((d) => (d.data()['dateKey'] as String?) == dateKey)
+        .toList();
+
+    final logSnap = await _dailyLogs().doc(dateKey).get();
+
+    await _isar.writeTxn(() async {
+      // Replace local food entries for this date.
+      final localIds = (await _isar.foodEntrys
+              .filter()
+              .dateKeyEqualTo(dateKey)
+              .findAll())
+          .map((e) => e.id)
+          .toList();
+      await _isar.foodEntrys.deleteAll(localIds);
+      for (final d in dayEntries) {
+        await _isar.foodEntrys.put(_foodEntryFromMap(d.data()));
+      }
+
+      // Replace local daily log for this date.
+      final localLogIds = (await _isar.dailyLogs
+              .filter()
+              .dateKeyEqualTo(dateKey)
+              .findAll())
+          .map((l) => l.id)
+          .toList();
+      await _isar.dailyLogs.deleteAll(localLogIds);
+      if (logSnap.exists) {
+        await _isar.dailyLogs.put(_dailyLogFromMap(logSnap.data()!));
+      }
+    });
   }
 
   Map<String, dynamic> _customFoodToMap(CustomFood c) => {

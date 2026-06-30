@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/db.dart';
 import '../data/models/custom_food.dart';
 import '../data/models/daily_log.dart';
+import '../data/models/enums.dart';
 import '../data/models/food_entry.dart';
 import '../data/models/profile.dart';
 import '../data/models/body_measurement.dart';
@@ -14,10 +15,13 @@ import '../data/models/workout_session.dart';
 import '../data/repositories/exercise_repo.dart';
 import '../data/repositories/measurement_repo.dart';
 import '../data/repositories/nutrition_repo.dart';
+import '../data/repositories/period_repo.dart';
+import '../data/models/period_log.dart';
 import '../data/repositories/profile_repo.dart';
 import '../data/repositories/workout_repo.dart';
 import '../services/data/data_export_service.dart';
 import '../services/progress/adaptive_targets.dart';
+import '../services/progress/weight_trend.dart';
 import '../services/ai/ai_service.dart';
 import '../services/ai/food_logger.dart';
 import '../services/ai/gemini_ai_service.dart';
@@ -93,6 +97,23 @@ final customFoodsProvider = StreamProvider<List<CustomFood>>((ref) {
   return ref.watch(nutritionRepoProvider).watchCustomFoods();
 });
 
+final periodRepoProvider = Provider<PeriodRepo>((ref) {
+  return PeriodRepo(ref.watch(dbProvider));
+});
+
+final todayPeriodLogProvider = StreamProvider<PeriodLog?>((ref) {
+  return ref.watch(periodRepoProvider).watchForDate(ref.watch(todayProvider));
+});
+
+final recentPeriodLogsProvider = StreamProvider<List<PeriodLog>>((ref) {
+  return ref.watch(periodRepoProvider).watchRecent();
+});
+
+final cycleInsightProvider = Provider<CycleInsight>((ref) {
+  final recent = ref.watch(recentPeriodLogsProvider).valueOrNull ?? const [];
+  return CycleInsight.from(recent, ref.watch(todayProvider));
+});
+
 final exerciseRepoProvider = Provider<ExerciseRepo>((ref) {
   return ExerciseRepo(ref.watch(dbProvider));
 });
@@ -125,6 +146,13 @@ final measurementsProvider = StreamProvider<List<BodyMeasurement>>((ref) {
   return ref.watch(measurementRepoProvider).watchAll();
 });
 
+final weightTrendProvider = Provider<WeightTrend>((ref) {
+  final ms = ref.watch(measurementsProvider).valueOrNull ??
+      const <BodyMeasurement>[];
+  final profile = ref.watch(profileStreamProvider).valueOrNull;
+  return WeightTrend.compute(ms, profile?.goal ?? FitnessGoal.generalFitness);
+});
+
 final adaptiveTargetsProvider = Provider<AdaptiveTargets>((ref) {
   return AdaptiveTargets(
     profileRepo: ref.watch(profileRepoProvider),
@@ -141,11 +169,22 @@ final allFoodEntriesProvider = StreamProvider<List<FoodEntry>>((ref) {
   return ref.watch(nutritionRepoProvider).watchAllEntries();
 });
 
+final allDailyLogsProvider = StreamProvider<List<DailyLog>>((ref) {
+  return ref.watch(nutritionRepoProvider).watchAllLogs();
+});
+
 final todaysRoutineDayProvider =
     FutureProvider.autoDispose<RoutineDay?>((ref) async {
   ref.watch(activeRoutineProvider);
   final today = ref.watch(todayProvider);
-  return ref.read(workoutRepoProvider).resolveTodaysDay(today);
+  // Profile's restDays is the source of truth for "is today rest?".
+  // Pass it into the repo so an AI-generated routine whose rest weekday
+  // disagrees with the user's setting can't override the user.
+  final profile = ref.watch(profileStreamProvider).valueOrNull;
+  final restWeekdays = profile?.restDays.toSet();
+  return ref
+      .read(workoutRepoProvider)
+      .resolveTodaysDay(today, restWeekdays: restWeekdays);
 });
 
 final routineGeneratorProvider = Provider<RoutineGenerator>((ref) {

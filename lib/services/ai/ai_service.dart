@@ -123,12 +123,24 @@ class MealSuggestion {
   final String name;
   final int calories;
   final int proteinG;
+  /// Optional macros — newer AI prompts return these too so the
+  /// suggestion can be logged with the same fidelity as a manual
+  /// food entry. Legacy responses leave them null.
+  final int? carbsG;
+  final int? fatG;
+  final int? fiberG;
+  /// Portion description — always grams now ("120g rice, 100g dal,
+  /// 80g chicken curry"). Older responses may have plate/bowl
+  /// language; the UI prefers structured fields when available.
   final String? portion;
   final String? note;
   const MealSuggestion({
     required this.name,
     required this.calories,
     required this.proteinG,
+    this.carbsG,
+    this.fatG,
+    this.fiberG,
     this.portion,
     this.note,
   });
@@ -159,6 +171,16 @@ abstract class AiService {
     required int carbsGRemaining,
     required int fatGRemaining,
     String? cuisineHint,
+    /// Foods the user actually eats often, most-frequent first. The
+    /// model should build suggestions FROM this list before adding
+    /// anything new — "healthy people eat the same things every day"
+    /// and an out-of-context suggestion (tuna pasta for a Nepali user)
+    /// just gets ignored. Empty means no history yet.
+    List<String> recentFoodHistory = const [],
+    /// Dietary preference verbatim ("omnivore", "vegetarian", "vegan",
+    /// "halal", etc). Used as a hard filter — vegan never gets meat,
+    /// halal never gets pork, etc.
+    String? dietPreference,
   });
 }
 

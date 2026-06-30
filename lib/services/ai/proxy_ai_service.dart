@@ -120,6 +120,8 @@ class ProxyAiService implements AiService {
     required int carbsGRemaining,
     required int fatGRemaining,
     String? cuisineHint,
+    List<String> recentFoodHistory = const [],
+    String? dietPreference,
   }) async {
     final json = await _postJson('/food/suggest-meals', {
       'caloriesRemaining': caloriesRemaining,
@@ -127,6 +129,9 @@ class ProxyAiService implements AiService {
       'carbsGRemaining': carbsGRemaining,
       'fatGRemaining': fatGRemaining,
       if (cuisineHint != null) 'cuisineHint': cuisineHint,
+      if (recentFoodHistory.isNotEmpty)
+        'recentFoodHistory': recentFoodHistory,
+      if (dietPreference != null) 'dietPreference': dietPreference,
     });
     final list = (json['suggestions'] as List?) ?? const [];
     return list.whereType<Map>().map((m) {
@@ -135,6 +140,9 @@ class ProxyAiService implements AiService {
         name: (mm['name'] as String?)?.trim() ?? 'meal',
         calories: _i(mm['calories']) ?? 0,
         proteinG: _i(mm['protein_g']) ?? 0,
+        carbsG: _i(mm['carbs_g']),
+        fatG: _i(mm['fat_g']),
+        fiberG: _i(mm['fiber_g']),
         portion: (mm['portion'] as String?)?.trim(),
         note: (mm['note'] as String?)?.trim(),
       );

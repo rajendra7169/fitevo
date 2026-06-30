@@ -269,6 +269,21 @@ class _RoutineView extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 14),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context, ref, routine),
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded,
+                          size: 14, color: AppColors.danger),
+                      const SizedBox(width: 4),
+                      Text('Delete',
+                          style: AppText.label.copyWith(
+                              color: AppColors.danger,
+                              letterSpacing: 0.6)),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -404,6 +419,71 @@ class _RoutineView extends ConsumerWidget {
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         content: Text(
             e is AiException ? e.message : 'Could not regenerate routine.',
+            style: AppText.body.copyWith(color: AppColors.textPrimary)),
+      ));
+    }
+  }
+
+  /// Hard-delete the active routine without regenerating, so the user
+  /// can start from a blank slate in the routine builder. The home
+  /// screen falls back to "Set up your routine" once the routine is gone.
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, Routine routine) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Delete this routine?',
+                  style: AppText.sectionTitle.copyWith(fontSize: 17)),
+              const SizedBox(height: 8),
+              Text(
+                  'All days and exercises in "${routine.name}" will be removed. Past workout sessions are kept. You can build a new routine from scratch afterwards.',
+                  style: AppText.body),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: Text('Cancel',
+                        style: AppText.body
+                            .copyWith(color: AppColors.textPrimary)),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: Text('Delete',
+                        style: AppText.body.copyWith(
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(workoutRepoProvider).deleteRoutine(routine.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppColors.surfaceHigh,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Text('Could not delete routine: $e',
             style: AppText.body.copyWith(color: AppColors.textPrimary)),
       ));
     }

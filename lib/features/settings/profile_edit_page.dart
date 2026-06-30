@@ -49,6 +49,11 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   bool _multivitamin = false;
   int _wakeMin = 420;
   int _sleepMin = 1380;
+  // Per-day toggle + arrays. When _perDaySchedule is false, only
+  // _wakeMin / _sleepMin are saved; the arrays clear on save.
+  bool _perDaySchedule = false;
+  List<int> _wakeMinByDay = List<int>.filled(7, 420);
+  List<int> _sleepMinByDay = List<int>.filled(7, 1380);
   DateTime? _gymStartDate;
   double? _bodyFatPct;
   List<HealthFlag> _healthFlags = [];
@@ -138,6 +143,15 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     _sleepMin = _safeInt(p.sleepTimeMin, min: 0, max: 1439);
     if (_wakeMin == 0) _wakeMin = 420;
     if (_sleepMin == 0) _sleepMin = 1380;
+    if (p.wakeMinByDay.length == 7 && p.sleepMinByDay.length == 7) {
+      _perDaySchedule = true;
+      _wakeMinByDay = List<int>.from(p.wakeMinByDay);
+      _sleepMinByDay = List<int>.from(p.sleepMinByDay);
+    } else {
+      _perDaySchedule = false;
+      _wakeMinByDay = List<int>.filled(7, _wakeMin);
+      _sleepMinByDay = List<int>.filled(7, _sleepMin);
+    }
     _focusNotes.text = p.bodyFocusNotes;
     _gymStartDate = p.gymStartDate;
     _goesGym = p.goesGym;
@@ -303,6 +317,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ..runningKmPerWeek = running
         ..gymMinutesPerSession = gymMin
         ..wakeTimeMin = _wakeMin
+        ..wakeMinByDay =
+            _perDaySchedule ? List<int>.from(_wakeMinByDay) : []
+        ..sleepMinByDay =
+            _perDaySchedule ? List<int>.from(_sleepMinByDay) : []
         ..sleepTimeMin = _sleepMin
         ..creatineGramsPerDay = creatine
         ..proteinScoopsPerDay = protein
@@ -562,26 +580,121 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                     subtitle:
                         'Used to time water reminders during your waking hours.',
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _TimeField(
-                              label: 'WAKE',
-                              minutes: _wakeMin,
-                              onChanged: (m) =>
-                                  setState(() => _wakeMin = m),
+                      if (!_perDaySchedule)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _TimeField(
+                                label: 'WAKE',
+                                minutes: _wakeMin,
+                                onChanged: (m) =>
+                                    setState(() => _wakeMin = m),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _TimeField(
+                                label: 'SLEEP',
+                                minutes: _sleepMin,
+                                onChanged: (m) =>
+                                    setState(() => _sleepMin = m),
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Column(
+                          children: [
+                            for (var i = 0; i < 7; i++) ...[
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 42,
+                                    child: Text(
+                                      const ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i],
+                                      style: AppText.label.copyWith(fontSize: 11),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _TimeField(
+                                      label: 'WAKE',
+                                      minutes: _wakeMinByDay[i],
+                                      onChanged: (m) =>
+                                          setState(() => _wakeMinByDay[i] = m),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _TimeField(
+                                      label: 'SLEEP',
+                                      minutes: _sleepMinByDay[i],
+                                      onChanged: (m) =>
+                                          setState(() => _sleepMinByDay[i] = m),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (i < 6) const SizedBox(height: 8),
+                            ],
+                          ],
+                        ),
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (!_perDaySchedule) {
+                              _wakeMinByDay =
+                                  List<int>.filled(7, _wakeMin);
+                              _sleepMinByDay =
+                                  List<int>.filled(7, _sleepMin);
+                            }
+                            _perDaySchedule = !_perDaySchedule;
+                          });
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          decoration: BoxDecoration(
+                            color: _perDaySchedule
+                                ? AppColors.accent.withValues(alpha: 0.10)
+                                : AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _perDaySchedule
+                                  ? AppColors.accent
+                                  : AppColors.stroke,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _TimeField(
-                              label: 'SLEEP',
-                              minutes: _sleepMin,
-                              onChanged: (m) =>
-                                  setState(() => _sleepMin = m),
-                            ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _perDaySchedule
+                                    ? Icons.check_circle_rounded
+                                    : Icons.calendar_view_week_rounded,
+                                size: 18,
+                                color: _perDaySchedule
+                                    ? AppColors.accent
+                                    : AppColors.textTertiary,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _perDaySchedule
+                                      ? 'Per-day schedule — set wake & sleep for each day'
+                                      : 'Different time each day?',
+                                  style: AppText.body.copyWith(
+                                    color: _perDaySchedule
+                                        ? AppColors.accent
+                                        : AppColors.textPrimary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),

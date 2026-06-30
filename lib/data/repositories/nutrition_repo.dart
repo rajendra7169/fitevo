@@ -77,6 +77,14 @@ class NutritionRepo {
         .map((all) => all.isEmpty ? null : all.first);
   }
 
+  /// Live stream of every DailyLog (water + activity + sleep). The
+  /// daily report grid uses this to colour each day's calorie ring
+  /// against that day's activity-adjusted target, not the static
+  /// weekly-average target on Profile.
+  Stream<List<DailyLog>> watchAllLogs() {
+    return _isar.dailyLogs.where().watch(fireImmediately: true);
+  }
+
   Future<DailyLog> getOrCreateLog(DateTime date) async {
     final key = DailyLog.keyFor(date);
     final existing =
@@ -319,6 +327,30 @@ class NutritionRepo {
     });
   }
 
+  /// Edit an existing water entry's time and/or amount. Either field
+  /// can be omitted to leave it unchanged. Re-derives `waterMl` so
+  /// the dashboard total stays consistent.
+  Future<void> updateWaterEntryAt(
+    DateTime date,
+    int index, {
+    int? ml,
+    int? minutesOfDay,
+  }) async {
+    final log = await getOrCreateLog(date);
+    if (index < 0 || index >= log.waterEntries.length) return;
+    final updated = List<WaterEntry>.of(log.waterEntries);
+    final original = updated[index];
+    updated[index] = WaterEntry()
+      ..minutesOfDay = minutesOfDay ?? original.minutesOfDay
+      ..ml = ml ?? original.ml;
+    log.waterEntries = updated;
+    log.waterMl = updated.fold<int>(0, (s, e) => s + e.ml);
+    log.updatedAt = DateTime.now();
+    await _isar.writeTxn(() async {
+      await _isar.dailyLogs.put(log);
+    });
+  }
+
   Future<void> setWater(DateTime date, int ml) async {
     final log = await getOrCreateLog(date);
     log.waterMl = ml < 0 ? 0 : ml;
@@ -326,6 +358,44 @@ class NutritionRepo {
     await _isar.writeTxn(() async {
       await _isar.dailyLogs.put(log);
     });
+  }
+
+  /// Deduped list of foods the user actually eats, most-frequent first.
+  /// Used as the anchor for AI meal suggestions — "build from what they
+  /// already eat, not from a generic Western default". Frequency-sorted
+  /// over [windowDays] (default 30); ties broken by recency.
+  static List<String> recentFoodVocabulary(
+    List<FoodEntry> entries, {
+    int windowDays = 30,
+    int limit = 20,
+  }) {
+    if (entries.isEmpty) return const [];
+    final cutoff =
+        DateTime.now().subtract(Duration(days: windowDays));
+    final counts = <String, int>{};
+    final lastSeen = <String, DateTime>{};
+    for (final e in entries) {
+      if (e.timestamp.isBefore(cutoff)) continue;
+      final raw = e.description.trim().isEmpty
+          ? e.rawInput.trim()
+          : e.description.trim();
+      if (raw.isEmpty) continue;
+      // Normalize so "Rice" and "rice" collapse into one bucket.
+      final key = raw.toLowerCase();
+      counts[key] = (counts[key] ?? 0) + 1;
+      final prev = lastSeen[key];
+      if (prev == null || e.timestamp.isAfter(prev)) {
+        lastSeen[key] = e.timestamp;
+      }
+    }
+    final sorted = counts.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        if (byCount != 0) return byCount;
+        return (lastSeen[b.key] ?? DateTime(0))
+            .compareTo(lastSeen[a.key] ?? DateTime(0));
+      });
+    return sorted.take(limit).map((e) => e.key).toList();
   }
 
   static DailyTotals sumEntries(List<FoodEntry> entries, {int waterMl = 0}) {

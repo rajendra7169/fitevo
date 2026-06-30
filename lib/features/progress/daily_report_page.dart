@@ -16,7 +16,9 @@ import '../../data/models/daily_log.dart';
 import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/workout_session.dart';
+import '../../core/health_math.dart' show HealthConstants;
 import '../../data/repositories/nutrition_repo.dart';
+import '../../home/todays_activity_card.dart' show TodaysActivityMath;
 import '../../services/ai/ai_service.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
@@ -82,6 +84,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     required DailyTotals totals,
     required List<FoodEntry> dayFoods,
     required List<WorkoutSession> daySessions,
+    DailyLog? dayLog,
   }) async {
     if (_summaryLoading) return;
     setState(() => _summaryLoading = true);
@@ -89,7 +92,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
       final ai = ref.read(aiServiceProvider);
       final dateLabel = DateFormat('EEEE, MMM d, y').format(_selectedDate);
       final ctx = _mode == _ReportMode.food
-          ? _foodContext(profile, totals, dayFoods)
+          ? _foodContext(profile, totals, dayFoods, dayLog: dayLog)
           : _workoutContext(profile, daySessions);
       final text = await ai.coachChat(
         userContext: 'Date: $dateLabel\n$ctx',
@@ -117,22 +120,49 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
   }
 
   String _foodContext(
-      Profile profile, DailyTotals totals, List<FoodEntry> foods) {
-    final calBalance = profile.effectiveCalorieTarget - totals.calories;
+      Profile profile, DailyTotals totals, List<FoodEntry> foods,
+      {DailyLog? dayLog}) {
+    // Today-adjusted target so the AI doesn't say "you're over" when
+    // the user logged a 5 km run that earned them 350 extra kcal.
+    final calTarget = TodaysActivityMath.effectiveTodayCalorieTarget(
+        profile: profile, log: dayLog);
+    final macros = TodaysActivityMath.effectiveTodayMacros(
+        profile: profile, log: dayLog);
+    final calBalance = calTarget - totals.calories;
     final mealsList = foods
         .map((f) => '- ${f.description.isEmpty ? f.rawInput : f.description}'
             ' (${f.calories} kcal)')
         .join('\n');
+    // Activity line — only included when the user actually logged
+    // something, so a quiet day doesn't get a misleading 0-km entry.
+    String? activityLine;
+    if (dayLog != null) {
+      final pieces = <String>[];
+      if (dayLog.walkingKmToday > 0) {
+        pieces.add('${dayLog.walkingKmToday.toStringAsFixed(1)} km walked');
+      }
+      if (dayLog.runningKmToday > 0) {
+        pieces.add('${dayLog.runningKmToday.toStringAsFixed(1)} km run');
+      }
+      if (dayLog.otherCardioMinutes > 0) {
+        pieces.add('${dayLog.otherCardioMinutes} min other cardio');
+      }
+      if (pieces.isNotEmpty) {
+        final bonus = calTarget - profile.effectiveCalorieTarget;
+        activityLine = 'Activity today: ${pieces.join(' · ')}'
+            '${bonus > 0 ? ' (+$bonus kcal to target)' : ''}';
+      }
+    }
     return [
       'Goal: ${profile.goal.name}',
       'Diet: ${profile.dietPreference.name}',
-      'Targets: ${profile.effectiveCalorieTarget} kcal · '
-          '${profile.effectiveProteinTarget}g P · '
-          '${profile.effectiveCarbTarget}g C · ${profile.effectiveFatTarget}g F',
+      'Targets (activity-adjusted): $calTarget kcal · '
+          '${macros.proteinG}g P · ${macros.carbG}g C · ${macros.fatG}g F',
       'Consumed: ${totals.calories} kcal · ${totals.proteinG}g P · '
           '${totals.carbsG}g C · ${totals.fatG}g F · ${totals.fiberG}g fiber',
       'Calorie balance: '
           '${calBalance >= 0 ? '$calBalance kcal left' : '${-calBalance} kcal over'}',
+      ?activityLine,
       'Meals: ${totals.entryCount}',
       if (mealsList.isNotEmpty) 'Items:\n$mealsList',
     ].join('\n');
@@ -143,6 +173,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     required DailyTotals totals,
     required List<FoodEntry> dayFoods,
     required List<WorkoutSession> daySessions,
+    DailyLog? dayLog,
   }) async {
     try {
       final doc = await _buildPdf(
@@ -150,6 +181,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
         totals: totals,
         dayFoods: dayFoods,
         daySessions: daySessions,
+        dayLog: dayLog,
       );
       final bytes = await doc.save();
       final dir = await getTemporaryDirectory();
@@ -180,6 +212,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     required DailyTotals totals,
     required List<FoodEntry> dayFoods,
     required List<WorkoutSession> daySessions,
+    DailyLog? dayLog,
   }) async {
     final doc = pw.Document();
     final dateLabel = DateFormat('EEEE, MMM d, y').format(_selectedDate);
@@ -292,9 +325,10 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
           pw.Container(height: 1, color: muted),
           pw.SizedBox(height: 14),
 
-          // Stats summary tiles
+          // Stats summary — rings (cal/carbs/fat) + bars (water/sodium/fiber)
+          // for food; horizontal tiles for workout.
           if (_mode == _ReportMode.food)
-            _pdfFoodStats(profile, totals, accent, muted)
+            _pdfFoodStatsRingsBars(profile, totals, dayLog, accent, muted)
           else
             _pdfWorkoutStats(daySessions, accent, muted),
 
@@ -382,58 +416,351 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     return groups;
   }
 
-  pw.Widget _pdfFoodStats(Profile profile, DailyTotals totals,
-      PdfColor accent, PdfColor muted) {
-    pw.Widget tile(String label, String value, String target) {
-      return pw.Expanded(
-        child: pw.Container(
-          padding: const pw.EdgeInsets.all(10),
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: muted, width: 0.5),
-            borderRadius:
-                const pw.BorderRadius.all(pw.Radius.circular(6)),
-          ),
+  /// Build a single SVG ring (track + progress arc, plus a second
+  /// overflow arc when [progress] > 1). Mirrors the in-app
+  /// _RingPainter behaviour so the PDF doesn't lie about overeating.
+  String _svgRing({
+    required double progress,
+    required String color,
+    double size = 80,
+    double stroke = 9,
+  }) {
+    final r = (size - stroke) / 2;
+    final cx = size / 2;
+    final cy = size / 2;
+    // Track full circle — always rendered so a 0 day still reads.
+    final track = '<circle cx="$cx" cy="$cy" r="$r" '
+        'fill="none" stroke="$color" stroke-opacity="0.18" '
+        'stroke-width="$stroke" />';
+    if (progress <= 0) {
+      return '<svg xmlns="http://www.w3.org/2000/svg" '
+          'viewBox="0 0 $size $size">$track</svg>';
+    }
+
+    String arcPath(double fraction, String strokeColor) {
+      final theta = fraction * 2 * math.pi;
+      final endX = cx + r * math.sin(theta);
+      final endY = cy - r * math.cos(theta);
+      final largeArc = fraction > 0.5 ? 1 : 0;
+      // Full lap special case: SVG's arc path can't draw a full 360°
+      // in a single A command. Fall back to two semicircles via a
+      // single circle stroke clip.
+      if (fraction >= 0.9999) {
+        return '<circle cx="$cx" cy="$cy" r="$r" '
+            'fill="none" stroke="$strokeColor" '
+            'stroke-width="$stroke" stroke-linecap="round" />';
+      }
+      final path = 'M $cx ${cy - r} A $r $r 0 $largeArc 1 $endX $endY';
+      return '<path d="$path" fill="none" stroke="$strokeColor" '
+          'stroke-width="$stroke" stroke-linecap="round" />';
+    }
+
+    // Primary arc — clamped to 1 lap.
+    final primary = math.min(progress, 1.0);
+    final primaryArc = arcPath(primary, color);
+
+    // Overflow arc — second pass darker so the user sees they exceeded
+    // the target. Capped at one extra lap so a 250% day doesn't
+    // attempt absurd geometry.
+    String overflowArc = '';
+    if (progress > 1.0) {
+      final over = (progress - 1.0).clamp(0.0, 1.0);
+      // Darken the colour by mixing with black ~35% — matches the
+      // in-app painter's Color.lerp(color, black, 0.35).
+      final darker = _darkenHex(color, 0.35);
+      overflowArc = arcPath(over, darker);
+    }
+
+    return '<svg xmlns="http://www.w3.org/2000/svg" '
+        'viewBox="0 0 $size $size">$track$primaryArc$overflowArc</svg>';
+  }
+
+  /// Cheap colour-darken: shift each RGB channel toward 0 by [amount]
+  /// (0..1). Used to render the PDF ring's overflow lap a shade darker
+  /// than the primary lap.
+  String _darkenHex(String hex, double amount) {
+    final raw = hex.startsWith('#') ? hex.substring(1) : hex;
+    final r = int.parse(raw.substring(0, 2), radix: 16);
+    final g = int.parse(raw.substring(2, 4), radix: 16);
+    final b = int.parse(raw.substring(4, 6), radix: 16);
+    int blend(int c) => (c * (1 - amount)).round().clamp(0, 255);
+    String hh(int c) => c.toRadixString(16).padLeft(2, '0');
+    return '#${hh(blend(r))}${hh(blend(g))}${hh(blend(b))}';
+  }
+
+  pw.Widget _pdfRingRow({
+    required String label,
+    required String value,
+    required String target,
+    required double progress,
+    required String colorHex,
+    required PdfColor muted,
+  }) {
+    return pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.SizedBox(
+          width: 38,
+          height: 38,
+          child: pw.SvgImage(svg: _svgRing(
+            progress: progress,
+            color: colorHex,
+            size: 80,
+            stroke: 11,
+          )),
+        ),
+        pw.SizedBox(width: 10),
+        pw.Expanded(
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(label,
                   style: pw.TextStyle(
                     fontSize: 8,
-                    letterSpacing: 0.6,
                     color: muted,
                     fontWeight: pw.FontWeight.bold,
+                    letterSpacing: 0.6,
                   )),
-              pw.SizedBox(height: 4),
+              pw.SizedBox(height: 2),
               pw.RichText(
                 text: pw.TextSpan(children: [
                   pw.TextSpan(
                       text: value,
                       style: pw.TextStyle(
-                          fontSize: 16,
-                          fontWeight: pw.FontWeight.bold)),
+                          fontSize: 13, fontWeight: pw.FontWeight.bold)),
                   pw.TextSpan(
                       text: ' $target',
-                      style: pw.TextStyle(fontSize: 9, color: muted)),
+                      style: pw.TextStyle(fontSize: 8, color: muted)),
                 ]),
               ),
             ],
           ),
         ),
-      );
-    }
+      ],
+    );
+  }
 
-    return pw.Row(children: [
-      tile('CALORIES', '${totals.calories}',
-          '/ ${profile.effectiveCalorieTarget} kcal'),
-      pw.SizedBox(width: 8),
-      tile('PROTEIN', '${totals.proteinG}',
-          '/ ${profile.effectiveProteinTarget}g'),
-      pw.SizedBox(width: 8),
-      tile('CARBS', '${totals.carbsG}',
-          '/ ${profile.effectiveCarbTarget}g'),
-      pw.SizedBox(width: 8),
-      tile('FAT', '${totals.fatG}', '/ ${profile.effectiveFatTarget}g'),
-    ]);
+  pw.Widget _pdfBarRow({
+    required String label,
+    required String value,
+    required String target,
+    required double progress,
+    required String colorHex,
+    required PdfColor muted,
+  }) {
+    final isOver = progress > 1.0;
+    final p = progress.clamp(0.0, 1.0);
+    final color = PdfColor.fromInt(int.parse(colorHex.substring(1), radix: 16) |
+        0xFF000000);
+    // For overflow we render a darker second segment on top of the
+    // first (capped at +1 lap) so the user sees a "stacked" bar — same
+    // intent as the in-app ring overflow.
+    final overFraction = isOver ? (progress - 1.0).clamp(0.0, 1.0) : 0.0;
+    final darkerHex = _darkenHex(colorHex, 0.35);
+    final darker = PdfColor.fromInt(
+        int.parse(darkerHex.substring(1), radix: 16) | 0xFF000000);
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Row(
+          children: [
+            pw.Text(label,
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  color: muted,
+                  fontWeight: pw.FontWeight.bold,
+                  letterSpacing: 0.6,
+                )),
+            pw.Spacer(),
+            pw.RichText(
+              text: pw.TextSpan(children: [
+                pw.TextSpan(
+                    text: value,
+                    style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                        color: isOver ? color : null)),
+                pw.TextSpan(
+                    text: ' / $target',
+                    style: pw.TextStyle(fontSize: 8, color: muted)),
+                if (isOver)
+                  pw.TextSpan(
+                    text: '  ↑ over',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+              ]),
+            ),
+          ],
+        ),
+        pw.SizedBox(height: 4),
+        // Single-row bar — primary fill clamped to 100%, overflow lap
+        // layered on top via a Stack so the bar visually "stacks" the
+        // overage in place instead of growing a second row underneath.
+        pw.ClipRRect(
+          horizontalRadius: 3,
+          verticalRadius: 3,
+          child: pw.SizedBox(
+            height: 6,
+            child: pw.Stack(
+              children: [
+                // Track underneath
+                pw.Positioned.fill(
+                  child: pw.Container(
+                    color: PdfColor.fromInt(
+                        (color.toInt() & 0x00FFFFFF) | 0x2A000000),
+                  ),
+                ),
+                // Primary lap row (Expanded flex fakes FractionallySizedBox)
+                pw.Positioned.fill(
+                  child: pw.Row(children: [
+                    if (p > 0)
+                      pw.Expanded(
+                        flex: (p * 1000).round(),
+                        child: pw.Container(color: color),
+                      ),
+                    if (p < 1)
+                      pw.Expanded(
+                        flex: ((1 - p) * 1000).round(),
+                        child: pw.Container(),
+                      ),
+                  ]),
+                ),
+                // Overflow lap layered on top of the primary fill
+                if (isOver)
+                  pw.Positioned.fill(
+                    child: pw.Row(children: [
+                      pw.Expanded(
+                        flex: (overFraction * 1000).round(),
+                        child: pw.Container(color: darker),
+                      ),
+                      if (overFraction < 1)
+                        pw.Expanded(
+                          flex: ((1 - overFraction) * 1000).round(),
+                          child: pw.Container(),
+                        ),
+                    ]),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _pdfFoodStatsRingsBars(
+    Profile profile,
+    DailyTotals totals,
+    DailyLog? dayLog,
+    PdfColor accent,
+    PdfColor muted,
+  ) {
+    // Use the activity-adjusted targets so the PDF matches what the
+    // user saw on the day in the app.
+    final calT = TodaysActivityMath.effectiveTodayCalorieTarget(
+        profile: profile, log: dayLog);
+    final macros = TodaysActivityMath.effectiveTodayMacros(
+        profile: profile, log: dayLog);
+    final waterTarget = profile.effectiveWaterTarget;
+    final fiberTarget = profile.effectiveFiberTarget;
+    final sodiumLimit = HealthConstants.sodiumDailyLimitMg;
+
+    // Hex colors picked to match the in-app palette (rendered in SVG).
+    const calColor = '#E8702C';   // saffron
+    const carbColor = '#C9A64A';  // gold
+    const fatColor = '#B5697A';   // berry
+    const waterColor = '#6B86C9';
+    const fiberColor = '#B48BCF';
+    const sodiumColor = '#E8702C';
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(12),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: muted, width: 0.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          // Left: rings (Calories, Carbs, Fat)
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _pdfRingRow(
+                  label: 'CALORIES',
+                  value: '${totals.calories}',
+                  target: '/ $calT kcal',
+                  progress: calT == 0 ? 0 : totals.calories / calT,
+                  colorHex: calColor,
+                  muted: muted,
+                ),
+                pw.SizedBox(height: 8),
+                _pdfRingRow(
+                  label: 'CARBS',
+                  value: '${totals.carbsG}',
+                  target: '/ ${macros.carbG}g',
+                  progress: macros.carbG == 0 ? 0 : totals.carbsG / macros.carbG,
+                  colorHex: carbColor,
+                  muted: muted,
+                ),
+                pw.SizedBox(height: 8),
+                _pdfRingRow(
+                  label: 'FAT',
+                  value: '${totals.fatG}',
+                  target: '/ ${macros.fatG}g',
+                  progress: macros.fatG == 0 ? 0 : totals.fatG / macros.fatG,
+                  colorHex: fatColor,
+                  muted: muted,
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(width: 16),
+          pw.Container(width: 0.5, color: muted, height: 130),
+          pw.SizedBox(width: 16),
+          // Right: bars (Water, Sodium, Fiber)
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _pdfBarRow(
+                  label: 'WATER',
+                  value: (totals.waterMl / 1000).toStringAsFixed(1),
+                  target: '${(waterTarget / 1000).toStringAsFixed(1)}L',
+                  progress: waterTarget == 0 ? 0 : totals.waterMl / waterTarget,
+                  colorHex: waterColor,
+                  muted: muted,
+                ),
+                pw.SizedBox(height: 12),
+                _pdfBarRow(
+                  label: 'SODIUM',
+                  value: (totals.sodiumMg / 1000).toStringAsFixed(1),
+                  target: '${(sodiumLimit / 1000).toStringAsFixed(1)}g',
+                  progress:
+                      sodiumLimit == 0 ? 0 : totals.sodiumMg / sodiumLimit,
+                  colorHex: sodiumColor,
+                  muted: muted,
+                ),
+                pw.SizedBox(height: 12),
+                _pdfBarRow(
+                  label: 'FIBER',
+                  value: '${totals.fiberG}',
+                  target: '${fiberTarget}g',
+                  progress: fiberTarget == 0 ? 0 : totals.fiberG / fiberTarget,
+                  colorHex: fiberColor,
+                  muted: muted,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   pw.Widget _pdfWorkoutStats(
@@ -682,11 +1009,21 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
         ref.watch(allFoodEntriesProvider).valueOrNull ?? const <FoodEntry>[];
     final allSessions = ref.watch(allSessionsProvider).valueOrNull ??
         const <WorkoutSession>[];
+    final allLogs = ref.watch(allDailyLogsProvider).valueOrNull ??
+        const <DailyLog>[];
     final dayKey = DailyLog.keyFor(_selectedDate);
     final dayFoods = allFoods.where((e) => e.dateKey == dayKey).toList();
     final daySessions =
         allSessions.where((s) => s.dateKey == dayKey).toList();
-    final totals = NutritionRepo.sumEntries(dayFoods);
+    // Per-day DailyLog lookup so each day's calorie ring uses the
+    // activity-adjusted target (running/walking/cardio + sleep) instead
+    // of the static weekly-average profile target.
+    final logsByDay = <String, DailyLog>{
+      for (final l in allLogs) l.dateKey: l,
+    };
+    final dayLog = logsByDay[dayKey];
+    final totals = NutritionRepo.sumEntries(dayFoods,
+        waterMl: dayLog?.waterMl ?? 0);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -706,6 +1043,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                       totals: totals,
                       dayFoods: dayFoods,
                       daySessions: daySessions,
+                      dayLog: dayLog,
                     ),
           ),
         ],
@@ -728,14 +1066,35 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                         profile: profile,
                         foods: allFoods,
                         sessions: allSessions,
+                        logsByDay: logsByDay,
                       ),
                       const SizedBox(height: 18),
                       _ModeToggle(mode: _mode, onChange: _switchMode),
                       const SizedBox(height: 22),
-                      if (_mode == _ReportMode.food)
-                        _FoodRings(profile: profile, totals: totals)
-                      else
+                      if (_mode == _ReportMode.food) ...[
+                        _FoodRings(
+                          profile: profile,
+                          totals: totals,
+                          dayLog: dayLog,
+                        ),
+                        const SizedBox(height: 10),
+                        _ExtrasBarsCard(
+                          profile: profile,
+                          totals: totals,
+                        ),
+                      ] else ...[
                         _WorkoutRings(sessions: daySessions),
+                        // Walking/running/cardio logged in the DailyLog
+                        // surfaces here too — gym sessions don't capture
+                        // it, but the home "Today's activity" card does.
+                        if (dayLog != null &&
+                            (dayLog.walkingKmToday > 0 ||
+                                dayLog.runningKmToday > 0 ||
+                                dayLog.otherCardioMinutes > 0)) ...[
+                          const SizedBox(height: 10),
+                          _ActivityKmCard(log: dayLog),
+                        ],
+                      ],
                       const SizedBox(height: 18),
                       _SummaryCard(
                         loading: _summaryLoading,
@@ -745,6 +1104,7 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                           totals: totals,
                           dayFoods: dayFoods,
                           daySessions: daySessions,
+                          dayLog: dayLog,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -794,6 +1154,10 @@ class _WeekStrip extends StatefulWidget {
   final Profile profile;
   final List<FoodEntry> foods;
   final List<WorkoutSession> sessions;
+  /// Day's DailyLog by dateKey — used to adjust per-day calorie target
+  /// for running/walking/cardio bonus instead of using the static
+  /// profile target on every day's mini ring.
+  final Map<String, DailyLog> logsByDay;
   const _WeekStrip({
     required this.selected,
     required this.onPick,
@@ -801,6 +1165,7 @@ class _WeekStrip extends StatefulWidget {
     required this.profile,
     required this.foods,
     required this.sessions,
+    required this.logsByDay,
   });
 
   @override
@@ -860,13 +1225,22 @@ class _WeekStripState extends State<_WeekStrip> {
     if (widget.mode == _ReportMode.food) {
       final dayFoods = foodsByDay[key] ?? const <FoodEntry>[];
       final t = NutritionRepo.sumEntries(dayFoods);
-      final calT = widget.profile.effectiveCalorieTarget;
-      final pT = widget.profile.effectiveProteinTarget;
-      final cT = widget.profile.effectiveCarbTarget;
+      // Per-day target — bumps for running/walking/cardio bonus and
+      // sleep-debt softener so a day with a 6 km run doesn't read as
+      // "over target" against the weekly average.
+      final dayLog = widget.logsByDay[key];
+      final calT = TodaysActivityMath.effectiveTodayCalorieTarget(
+        profile: widget.profile,
+        log: dayLog,
+      );
+      final macros = TodaysActivityMath.effectiveTodayMacros(
+        profile: widget.profile,
+        log: dayLog,
+      );
       return _DayRingValues(
         outer: calT == 0 ? 0 : t.calories / calT,
-        middle: pT == 0 ? 0 : t.proteinG / pT,
-        inner: cT == 0 ? 0 : t.carbsG / cT,
+        middle: macros.proteinG == 0 ? 0 : t.proteinG / macros.proteinG,
+        inner: macros.carbG == 0 ? 0 : t.carbsG / macros.carbG,
         outerColor: AppColors.calorieFrom,
         middleColor: AppColors.protein,
         innerColor: AppColors.carbs,
@@ -1028,8 +1402,12 @@ class _DayChip extends StatelessWidget {
                 )),
           ),
           const SizedBox(height: 6),
+          // Future dates still render the three ring tracks so the
+          // strip stays visually rhythmic (matches the dim day-of-week
+          // + day-of-month treatment above). Was previously hard-dimmed
+          // to 0.3 which made the tracks effectively invisible.
           Opacity(
-            opacity: disabled ? 0.3 : 1,
+            opacity: disabled ? 0.55 : 1,
             child: SizedBox(
               width: 24,
               height: 24,
@@ -1043,12 +1421,268 @@ class _DayChip extends StatelessWidget {
                   innerColor: rings.innerColor,
                   strokeWidth: 2.6,
                   gap: 0.8,
+                  // Strip tracks need to read at a 24×24 thumbnail even
+                  // when the day has no progress yet — punch up alpha
+                  // so the three tracks remain visibly stacked.
+                  trackAlpha: 0.45,
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Activity km card — sits under the workout rings in the daily report
+// when the user logged walking / running / non-gym cardio for the day.
+// Gym sessions live above; this is the "movement outside the gym" row.
+// ---------------------------------------------------------------------
+
+class _ActivityKmCard extends StatelessWidget {
+  final DailyLog log;
+  const _ActivityKmCard({required this.log});
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = <Widget>[];
+    if (log.walkingKmToday > 0) {
+      tiles.add(_ActivityKmTile(
+        icon: Icons.directions_walk_rounded,
+        label: 'Walk',
+        value: log.walkingKmToday.toStringAsFixed(1),
+        unit: 'km',
+        color: AppColors.water,
+        motion: _IconMotion.walk,
+      ));
+    }
+    if (log.runningKmToday > 0) {
+      tiles.add(_ActivityKmTile(
+        icon: Icons.directions_run_rounded,
+        label: 'Run',
+        value: log.runningKmToday.toStringAsFixed(1),
+        unit: 'km',
+        color: AppColors.accent,
+        motion: _IconMotion.run,
+      ));
+    }
+    if (log.otherCardioMinutes > 0) {
+      tiles.add(_ActivityKmTile(
+        icon: Icons.local_fire_department_rounded,
+        label: 'Cardio',
+        value: '${log.otherCardioMinutes}',
+        unit: 'min',
+        color: AppColors.danger,
+        motion: _IconMotion.pulse,
+      ));
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.timeline_rounded,
+                  size: 14, color: AppColors.textTertiary),
+              const SizedBox(width: 6),
+              Text('OUTDOOR / CARDIO',
+                  style: AppText.label.copyWith(
+                      fontSize: 11, letterSpacing: 0.8)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Wrap so 1–3 tiles flow nicely on narrow screens.
+          Row(
+            children: [
+              for (var i = 0; i < tiles.length; i++) ...[
+                Expanded(child: tiles[i]),
+                if (i < tiles.length - 1) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Motion style for the activity icon — drives the looping animation
+/// that gives the tile a sense of movement (walk gently sways, run
+/// sways faster + tilts, cardio pulses like a beating flame).
+enum _IconMotion { walk, run, pulse }
+
+class _ActivityKmTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String unit;
+  final Color color;
+  final _IconMotion motion;
+  const _ActivityKmTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+    required this.motion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _MovingIcon(
+                  icon: icon,
+                  color: color,
+                  motion: motion,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: AppText.meta.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiary,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: value,
+                    style: AppText.bigNumber.copyWith(
+                      fontSize: 20,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' $unit',
+                    style: AppText.meta.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tiny looping animation that gives the activity tile icons a sense
+/// of motion. Walk = gentle horizontal sway. Run = faster sway + tilt.
+/// Pulse = scale in-out like a beating flame. Implemented with a
+/// SingleTickerProvider + linear repeating controller so each tile
+/// owns one cheap controller.
+class _MovingIcon extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final _IconMotion motion;
+  const _MovingIcon({
+    required this.icon,
+    required this.color,
+    required this.motion,
+  });
+
+  @override
+  State<_MovingIcon> createState() => _MovingIconState();
+}
+
+class _MovingIconState extends State<_MovingIcon>
+    with SingleTickerProviderStateMixin {
+  late final Duration _period = switch (widget.motion) {
+    _IconMotion.walk => const Duration(milliseconds: 1200),
+    _IconMotion.run => const Duration(milliseconds: 700),
+    _IconMotion.pulse => const Duration(milliseconds: 900),
+  };
+  late final AnimationController _ctl =
+      AnimationController(vsync: this, duration: _period)..repeat();
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctl,
+      builder: (_, _) {
+        final t = _ctl.value; // 0..1
+        // Smooth sine so the motion eases rather than ticks.
+        final phase = math.sin(t * 2 * math.pi);
+        double dx = 0;
+        double dy = 0;
+        double rot = 0;
+        double scale = 1.0;
+        switch (widget.motion) {
+          case _IconMotion.walk:
+            // Side-to-side sway, very gentle.
+            dx = phase * 1.6;
+            dy = (1 - (phase.abs())) * -0.6; // tiny bob on stride
+            break;
+          case _IconMotion.run:
+            // Faster sway + slight forward lean tilt.
+            dx = phase * 2.4;
+            dy = (1 - (phase.abs())) * -1.0;
+            rot = phase * 0.05;
+            break;
+          case _IconMotion.pulse:
+            // Beating-heart style scale: 0.92 → 1.10 → 0.92.
+            scale = 1.0 + 0.10 * phase;
+            break;
+        }
+        return Transform.translate(
+          offset: Offset(dx, dy),
+          child: Transform.rotate(
+            angle: rot,
+            child: Transform.scale(
+              scale: scale,
+              child: Icon(widget.icon, size: 14, color: widget.color),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1143,13 +1777,29 @@ class _SegmentButton extends StatelessWidget {
 class _FoodRings extends StatelessWidget {
   final Profile profile;
   final DailyTotals totals;
-  const _FoodRings({required this.profile, required this.totals});
+  /// Day's DailyLog when one exists. Provides the running/walking
+  /// activity that the calorie target bumps for, so the ring agrees
+  /// with the home dashboard instead of showing "over target" after
+  /// a run.
+  final DailyLog? dayLog;
+  const _FoodRings({
+    required this.profile,
+    required this.totals,
+    this.dayLog,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final calT = profile.effectiveCalorieTarget;
-    final pT = profile.effectiveProteinTarget;
-    final cT = profile.effectiveCarbTarget;
+    final calT = TodaysActivityMath.effectiveTodayCalorieTarget(
+      profile: profile,
+      log: dayLog,
+    );
+    final macros = TodaysActivityMath.effectiveTodayMacros(
+      profile: profile,
+      log: dayLog,
+    );
+    final pT = macros.proteinG;
+    final cT = macros.carbG;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 22),
       decoration: BoxDecoration(
@@ -1200,6 +1850,210 @@ class _FoodRings extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Water / Fiber / Sodium bar cards — sit under the food rings on the
+// selected day. Mirrors the home screen's _WaterFiberChips so users
+// can see the same three stats per-day in the report.
+// ---------------------------------------------------------------------
+
+class _ExtrasBarsCard extends StatelessWidget {
+  final Profile profile;
+  final DailyTotals totals;
+  const _ExtrasBarsCard({required this.profile, required this.totals});
+
+  @override
+  Widget build(BuildContext context) {
+    final waterTargetMl = profile.effectiveWaterTarget;
+    final fiberTarget = profile.effectiveFiberTarget;
+    final sodiumLimit = HealthConstants.sodiumDailyLimitMg;
+
+    final waterProgress =
+        waterTargetMl == 0 ? 0.0 : totals.waterMl / waterTargetMl;
+    final fiberProgress =
+        fiberTarget == 0 ? 0.0 : totals.fiberG / fiberTarget;
+    final sodiumProgress =
+        sodiumLimit == 0 ? 0.0 : totals.sodiumMg / sodiumLimit;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatBarCard(
+            icon: Icons.water_drop_rounded,
+            label: 'Water',
+            value: (totals.waterMl / 1000).toStringAsFixed(1),
+            unit: 'L',
+            target: '${(waterTargetMl / 1000).toStringAsFixed(1)}L',
+            // Pass raw progress — the card handles overflow + up-arrow.
+            progress: waterProgress,
+            color: AppColors.water,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBarCard(
+            icon: Icons.grass_rounded,
+            label: 'Fiber',
+            value: '${totals.fiberG}',
+            unit: 'g',
+            target: '${fiberTarget}g',
+            progress: fiberProgress,
+            color: AppColors.fiber,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBarCard(
+            icon: Icons.scatter_plot_rounded,
+            label: 'Sodium',
+            value: (totals.sodiumMg / 1000).toStringAsFixed(1),
+            unit: 'g',
+            target: '${(sodiumLimit / 1000).toStringAsFixed(1)}g',
+            progress: sodiumProgress,
+            color: AppColors.calorieFrom,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatBarCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String unit;
+  final String target;
+  /// Raw progress 0..N — values > 1 trigger the up-arrow over indicator
+  /// and a stacked darker overflow segment beneath the primary bar.
+  final double progress;
+  final Color color;
+  const _StatBarCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.target,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isOver = progress > 1.0;
+    final primary = progress.clamp(0.0, 1.0);
+    final overFraction = isOver ? (progress - 1.0).clamp(0.0, 1.0) : 0.0;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.stroke, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 14, color: color),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label.toUpperCase(),
+                  style: AppText.meta.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textTertiary,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+              if (isOver)
+                Icon(Icons.arrow_upward_rounded,
+                    size: 14, color: color),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: value,
+                    style: AppText.bigNumber.copyWith(
+                      fontSize: 18,
+                      color: isOver ? color : AppColors.textPrimary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: unit,
+                    style: AppText.bigNumber.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' /$target',
+                    style: AppText.meta.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Single-row bar with the overflow layered on top — same
+          // "stacking" feel as the ring overflow on the home screen.
+          // No second row beneath; the darker overlay sits inside the
+          // primary fill so the strip stays compact.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              height: 6,
+              child: LayoutBuilder(
+                builder: (ctx, c) {
+                  final w = c.maxWidth;
+                  final overlayColor =
+                      Color.lerp(color, Colors.black, 0.35)!;
+                  return Stack(
+                    children: [
+                      // Track
+                      Container(color: color.withValues(alpha: 0.14)),
+                      // Primary lap — clamped to 100%
+                      SizedBox(
+                        width: w * primary,
+                        child: Container(color: color),
+                      ),
+                      // Overflow lap — sits on top of primary, growing
+                      // from the left up to the overshoot proportion.
+                      if (isOver)
+                        SizedBox(
+                          width: w * overFraction,
+                          child: Container(color: overlayColor),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1352,10 +2206,15 @@ class _TripleRingPainter extends CustomPainter {
     required this.innerColor,
     this.strokeWidth = 18,
     this.gap = 4,
+    this.trackAlpha = 0.18,
   });
 
   final double strokeWidth;
   final double gap;
+  /// Background-track opacity. Bumped by the week strip's tiny rings so
+  /// future / no-data days still show visible track outlines instead of
+  /// a barely-there smudge.
+  final double trackAlpha;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1378,19 +2237,48 @@ class _TripleRingPainter extends CustomPainter {
       double strokeWidth, Color color, double progress) {
     final rect = Rect.fromCircle(center: center, radius: radius);
     final track = Paint()
-      ..color = color.withValues(alpha: 0.18)
+      ..color = color.withValues(alpha: trackAlpha)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
     canvas.drawArc(rect, 0, 2 * math.pi, false, track);
-    final p = progress.clamp(0.0, 1.0);
-    if (p <= 0) return;
+    if (progress <= 0) return;
+
+    final primaryFraction = math.min(progress, 1.0);
     final fg = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * p, false, fg);
+    canvas.drawArc(
+        rect, -math.pi / 2, 2 * math.pi * primaryFraction, false, fg);
+
+    // Overflow pass — when consumed > target, lay a second arc on top
+    // (Apple-Watch-style) so the user can see how far past the goal
+    // they went. Matches the home calorie ring's stacking behavior.
+    if (progress > 1.0) {
+      final overflowFraction = (progress - 1.0).clamp(0.0, 1.0);
+      final overflowSweep = 2 * math.pi * overflowFraction;
+
+      final shadow = Paint()
+        ..color = Colors.black.withValues(alpha: 0.30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth + 1
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+      canvas.drawArc(rect, -math.pi / 2, overflowSweep, false, shadow);
+
+      // Darken toward black for the overflow tip so the second lap
+      // is visually distinct from the first without introducing a
+      // new color (rings keep their per-macro color identity).
+      final overflowColor = Color.lerp(color, Colors.black, 0.35)!;
+      final over = Paint()
+        ..color = overflowColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(rect, -math.pi / 2, overflowSweep, false, over);
+    }
   }
 
   @override

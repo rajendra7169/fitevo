@@ -7,9 +7,11 @@ import '../../data/models/enums.dart';
 import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/nutrition_repo.dart';
+import '../../home/todays_activity_card.dart' show TodaysActivityMath;
 import '../../state/providers.dart';
 import '../../theme.dart';
 import 'meal_actions_sheet.dart';
+import 'meal_ideas_sheet.dart';
 
 class TodaysFoodPage extends ConsumerWidget {
   const TodaysFoodPage({super.key});
@@ -55,7 +57,66 @@ class TodaysFoodPage extends ConsumerWidget {
                           .animate()
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.06, end: 0),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 14),
+                      // AI meal-ideas CTA — fits the user's remaining
+                      // macros + diet preference + region. Hidden once
+                      // the user is past target so the suggestion
+                      // doesn't push them further over.
+                      Consumer(builder: (_, ref2, _) {
+                        final log =
+                            ref2.watch(todayLogProvider).valueOrNull;
+                        final calT =
+                            TodaysActivityMath.effectiveTodayCalorieTarget(
+                                profile: profile, log: log);
+                        final calLeft =
+                            (calT - totals.calories).clamp(0, 9999);
+                        if (calLeft < 200) return const SizedBox.shrink();
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => showMealIdeasSheet(context),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                  color: AppColors.accent
+                                      .withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.auto_awesome_rounded,
+                                    size: 16, color: AppColors.accent),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('SUGGEST MEALS',
+                                          style: AppText.label.copyWith(
+                                              fontSize: 10,
+                                              color: AppColors.accent,
+                                              letterSpacing: 0.8)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '$calLeft kcal left — get 3 ideas '
+                                        'that fit your macros',
+                                        style: AppText.body.copyWith(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right_rounded,
+                                    size: 18, color: AppColors.accent),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).animate(delay: 100.ms).fadeIn(duration: 280.ms),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
                           Expanded(
@@ -546,14 +607,27 @@ class _MicroChip extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
+class _SummaryCard extends ConsumerWidget {
   final Profile profile;
   final DailyTotals totals;
   const _SummaryCard({required this.profile, required this.totals});
 
   @override
-  Widget build(BuildContext context) {
-    final calLeft = (profile.effectiveCalorieTarget - totals.calories).clamp(0, 99999);
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Pick up today's logged activity (running km, cardio min, sleep)
+    // so the target on this page tracks the home calorie ring. Without
+    // this, logging a run on the home screen updated the ring but the
+    // details page kept showing the static weekly-average target.
+    final log = ref.watch(todayLogProvider).valueOrNull;
+    final calTarget = TodaysActivityMath.effectiveTodayCalorieTarget(
+      profile: profile,
+      log: log,
+    );
+    final macros = TodaysActivityMath.effectiveTodayMacros(
+      profile: profile,
+      log: log,
+    );
+    final calLeft = (calTarget - totals.calories).clamp(0, 99999);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -594,7 +668,7 @@ class _SummaryCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text('of ${profile.effectiveCalorieTarget} target',
+                    Text('of $calTarget target',
                         style: AppText.meta.copyWith(fontSize: 11)),
                   ],
                 ),
@@ -608,7 +682,7 @@ class _SummaryCard extends StatelessWidget {
                 child: _MacroChip(
                   label: 'Protein',
                   value: '${totals.proteinG}',
-                  target: profile.effectiveProteinTarget,
+                  target: macros.proteinG,
                   color: AppColors.protein,
                 ),
               ),
@@ -617,7 +691,7 @@ class _SummaryCard extends StatelessWidget {
                 child: _MacroChip(
                   label: 'Carbs',
                   value: '${totals.carbsG}',
-                  target: profile.effectiveCarbTarget,
+                  target: macros.carbG,
                   color: AppColors.carbs,
                 ),
               ),
@@ -626,7 +700,7 @@ class _SummaryCard extends StatelessWidget {
                 child: _MacroChip(
                   label: 'Fat',
                   value: '${totals.fatG}',
-                  target: profile.effectiveFatTarget,
+                  target: macros.fatG,
                   color: AppColors.fat,
                 ),
               ),

@@ -228,59 +228,69 @@ const ProfileSchema = CollectionSchema(
       name: r'runningKmPerWeek',
       type: IsarType.double,
     ),
-    r'sleepTimeMin': PropertySchema(
+    r'sleepMinByDay': PropertySchema(
       id: 41,
+      name: r'sleepMinByDay',
+      type: IsarType.longList,
+    ),
+    r'sleepTimeMin': PropertySchema(
+      id: 42,
       name: r'sleepTimeMin',
       type: IsarType.long,
     ),
     r'tdee': PropertySchema(
-      id: 42,
+      id: 43,
       name: r'tdee',
       type: IsarType.double,
     ),
     r'trainingDaysPerWeek': PropertySchema(
-      id: 43,
+      id: 44,
       name: r'trainingDaysPerWeek',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 44,
+      id: 45,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
+    r'wakeMinByDay': PropertySchema(
+      id: 46,
+      name: r'wakeMinByDay',
+      type: IsarType.longList,
+    ),
     r'wakeTimeMin': PropertySchema(
-      id: 45,
+      id: 47,
       name: r'wakeTimeMin',
       type: IsarType.long,
     ),
     r'walkingKmPerDay': PropertySchema(
-      id: 46,
+      id: 48,
       name: r'walkingKmPerDay',
       type: IsarType.double,
     ),
     r'waterOverride': PropertySchema(
-      id: 47,
+      id: 49,
       name: r'waterOverride',
       type: IsarType.long,
     ),
     r'waterTargetMl': PropertySchema(
-      id: 48,
+      id: 50,
       name: r'waterTargetMl',
       type: IsarType.long,
     ),
     r'weighInCadence': PropertySchema(
-      id: 49,
+      id: 51,
       name: r'weighInCadence',
       type: IsarType.string,
       enumMap: _ProfileweighInCadenceEnumValueMap,
     ),
     r'weighInWeekday': PropertySchema(
-      id: 50,
+      id: 52,
       name: r'weighInWeekday',
       type: IsarType.long,
     ),
     r'weightKg': PropertySchema(
-      id: 51,
+      id: 53,
       name: r'weightKg',
       type: IsarType.double,
     )
@@ -322,6 +332,8 @@ int _profileEstimateSize(
   }
   bytesCount += 3 + object.otherSupplementsNote.length * 3;
   bytesCount += 3 + object.restDays.length * 8;
+  bytesCount += 3 + object.sleepMinByDay.length * 8;
+  bytesCount += 3 + object.wakeMinByDay.length * 8;
   bytesCount += 3 + object.weighInCadence.name.length * 3;
   return bytesCount;
 }
@@ -374,17 +386,19 @@ void _profileSerialize(
   writer.writeLong(offsets[38], object.proteinTargetG);
   writer.writeLongList(offsets[39], object.restDays);
   writer.writeDouble(offsets[40], object.runningKmPerWeek);
-  writer.writeLong(offsets[41], object.sleepTimeMin);
-  writer.writeDouble(offsets[42], object.tdee);
-  writer.writeLong(offsets[43], object.trainingDaysPerWeek);
-  writer.writeDateTime(offsets[44], object.updatedAt);
-  writer.writeLong(offsets[45], object.wakeTimeMin);
-  writer.writeDouble(offsets[46], object.walkingKmPerDay);
-  writer.writeLong(offsets[47], object.waterOverride);
-  writer.writeLong(offsets[48], object.waterTargetMl);
-  writer.writeString(offsets[49], object.weighInCadence.name);
-  writer.writeLong(offsets[50], object.weighInWeekday);
-  writer.writeDouble(offsets[51], object.weightKg);
+  writer.writeLongList(offsets[41], object.sleepMinByDay);
+  writer.writeLong(offsets[42], object.sleepTimeMin);
+  writer.writeDouble(offsets[43], object.tdee);
+  writer.writeLong(offsets[44], object.trainingDaysPerWeek);
+  writer.writeDateTime(offsets[45], object.updatedAt);
+  writer.writeLongList(offsets[46], object.wakeMinByDay);
+  writer.writeLong(offsets[47], object.wakeTimeMin);
+  writer.writeDouble(offsets[48], object.walkingKmPerDay);
+  writer.writeLong(offsets[49], object.waterOverride);
+  writer.writeLong(offsets[50], object.waterTargetMl);
+  writer.writeString(offsets[51], object.weighInCadence.name);
+  writer.writeLong(offsets[52], object.weighInWeekday);
+  writer.writeDouble(offsets[53], object.weightKg);
 }
 
 Profile _profileDeserialize(
@@ -445,19 +459,21 @@ Profile _profileDeserialize(
   object.proteinTargetG = reader.readLong(offsets[38]);
   object.restDays = reader.readLongList(offsets[39]) ?? [];
   object.runningKmPerWeek = reader.readDouble(offsets[40]);
-  object.sleepTimeMin = reader.readLong(offsets[41]);
-  object.tdee = reader.readDouble(offsets[42]);
-  object.trainingDaysPerWeek = reader.readLong(offsets[43]);
-  object.updatedAt = reader.readDateTime(offsets[44]);
-  object.wakeTimeMin = reader.readLong(offsets[45]);
-  object.walkingKmPerDay = reader.readDouble(offsets[46]);
-  object.waterOverride = reader.readLongOrNull(offsets[47]);
-  object.waterTargetMl = reader.readLong(offsets[48]);
+  object.sleepMinByDay = reader.readLongList(offsets[41]) ?? [];
+  object.sleepTimeMin = reader.readLong(offsets[42]);
+  object.tdee = reader.readDouble(offsets[43]);
+  object.trainingDaysPerWeek = reader.readLong(offsets[44]);
+  object.updatedAt = reader.readDateTime(offsets[45]);
+  object.wakeMinByDay = reader.readLongList(offsets[46]) ?? [];
+  object.wakeTimeMin = reader.readLong(offsets[47]);
+  object.walkingKmPerDay = reader.readDouble(offsets[48]);
+  object.waterOverride = reader.readLongOrNull(offsets[49]);
+  object.waterTargetMl = reader.readLong(offsets[50]);
   object.weighInCadence = _ProfileweighInCadenceValueEnumMap[
-          reader.readStringOrNull(offsets[49])] ??
+          reader.readStringOrNull(offsets[51])] ??
       WeighInCadence.daily;
-  object.weighInWeekday = reader.readLongOrNull(offsets[50]);
-  object.weightKg = reader.readDouble(offsets[51]);
+  object.weighInWeekday = reader.readLongOrNull(offsets[52]);
+  object.weightKg = reader.readDouble(offsets[53]);
   return object;
 }
 
@@ -563,28 +579,32 @@ P _profileDeserializeProp<P>(
     case 40:
       return (reader.readDouble(offset)) as P;
     case 41:
-      return (reader.readLong(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 42:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 43:
-      return (reader.readLong(offset)) as P;
-    case 44:
-      return (reader.readDateTime(offset)) as P;
-    case 45:
-      return (reader.readLong(offset)) as P;
-    case 46:
       return (reader.readDouble(offset)) as P;
-    case 47:
-      return (reader.readLongOrNull(offset)) as P;
-    case 48:
+    case 44:
       return (reader.readLong(offset)) as P;
+    case 45:
+      return (reader.readDateTime(offset)) as P;
+    case 46:
+      return (reader.readLongList(offset) ?? []) as P;
+    case 47:
+      return (reader.readLong(offset)) as P;
+    case 48:
+      return (reader.readDouble(offset)) as P;
     case 49:
+      return (reader.readLongOrNull(offset)) as P;
+    case 50:
+      return (reader.readLong(offset)) as P;
+    case 51:
       return (_ProfileweighInCadenceValueEnumMap[
               reader.readStringOrNull(offset)] ??
           WeighInCadence.daily) as P;
-    case 50:
+    case 52:
       return (reader.readLongOrNull(offset)) as P;
-    case 51:
+    case 53:
       return (reader.readDouble(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -4089,6 +4109,150 @@ extension ProfileQueryFilter
     });
   }
 
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sleepMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sleepMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sleepMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sleepMinByDay',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepMinByDayIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      sleepMinByDayLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sleepMinByDay',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Profile, Profile, QAfterFilterCondition> sleepTimeMinEqualTo(
       int value) {
     return QueryBuilder.apply(this, (query) {
@@ -4310,6 +4474,150 @@ extension ProfileQueryFilter
         upper: upper,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'wakeMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayElementGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'wakeMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayElementLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'wakeMinByDay',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'wakeMinByDay',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition> wakeMinByDayIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QAfterFilterCondition>
+      wakeMinByDayLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'wakeMinByDay',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -6320,6 +6628,12 @@ extension ProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Profile, Profile, QDistinct> distinctBySleepMinByDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sleepMinByDay');
+    });
+  }
+
   QueryBuilder<Profile, Profile, QDistinct> distinctBySleepTimeMin() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'sleepTimeMin');
@@ -6341,6 +6655,12 @@ extension ProfileQueryWhereDistinct
   QueryBuilder<Profile, Profile, QDistinct> distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<Profile, Profile, QDistinct> distinctByWakeMinByDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'wakeMinByDay');
     });
   }
 
@@ -6649,6 +6969,12 @@ extension ProfileQueryProperty
     });
   }
 
+  QueryBuilder<Profile, List<int>, QQueryOperations> sleepMinByDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sleepMinByDay');
+    });
+  }
+
   QueryBuilder<Profile, int, QQueryOperations> sleepTimeMinProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sleepTimeMin');
@@ -6670,6 +6996,12 @@ extension ProfileQueryProperty
   QueryBuilder<Profile, DateTime, QQueryOperations> updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<Profile, List<int>, QQueryOperations> wakeMinByDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'wakeMinByDay');
     });
   }
 

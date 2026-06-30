@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/enums.dart';
+import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/nutrition_repo.dart';
 import '../../services/ai/ai_service.dart';
@@ -64,12 +65,20 @@ class _MealSuggestionsSheetState
       final cLeft = (p.effectiveCarbTarget - t.carbsG).clamp(0, 999);
       final fLeft = (p.effectiveFatTarget - t.fatG).clamp(0, 999);
       final cuisine = _cuisineHintFromProfile(p);
+      // Same history-anchored vocabulary the meal-ideas sheet uses —
+      // builds suggestions from what the user actually eats instead
+      // of falling back to generic Western defaults.
+      final allFoods = ref.read(allFoodEntriesProvider).valueOrNull ??
+          const <FoodEntry>[];
+      final vocab = NutritionRepo.recentFoodVocabulary(allFoods);
       final list = await ref.read(aiServiceProvider).suggestMeals(
             caloriesRemaining: calLeft,
             proteinGRemaining: pLeft,
             carbsGRemaining: cLeft,
             fatGRemaining: fLeft,
             cuisineHint: cuisine,
+            recentFoodHistory: vocab,
+            dietPreference: p.dietPreference.name,
           );
       if (!mounted) return;
       setState(() {

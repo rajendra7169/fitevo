@@ -17,6 +17,15 @@ import 'theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Replace the default red "Exception thrown" widget with a readable
+  // card that shows the actual error + stack tail, plus a Copy button.
+  // Default behavior on release builds also gets the friendlier card so
+  // users can paste us the failure instead of just describing "red
+  // screen" — that turned out to be load-bearing for debugging.
+  ErrorWidget.builder = (FlutterErrorDetails details) => _FriendlyError(
+        details: details,
+      );
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -28,7 +37,7 @@ Future<void> main() async {
 
   // Set palette before first widget builds so AppColors.x is correct.
   AppColors.palette =
-      settings.themeMode == ThemeMode.light ? lightPalette : darkPalette;
+      settings.themeMode == ThemeMode.light ? lightPalette : warmDarkPalette;
 
   runApp(ProviderScope(
     overrides: [
@@ -45,7 +54,7 @@ class FitevoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
-    final palette = mode == ThemeMode.light ? lightPalette : darkPalette;
+    final palette = mode == ThemeMode.light ? lightPalette : warmDarkPalette;
     AppColors.palette = palette;
 
 
@@ -64,7 +73,7 @@ class FitevoApp extends ConsumerWidget {
       title: 'Fitevo',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(lightPalette),
-      darkTheme: buildAppTheme(darkPalette),
+      darkTheme: buildAppTheme(warmDarkPalette),
       themeMode: mode,
       builder: (context, child) {
         // Force the entire navigator (and all pushed routes) to rebuild
@@ -130,6 +139,108 @@ class _ProfileResolver extends ConsumerWidget {
         if (p == null) return const OnboardingFlow();
         return const HomeShell();
       },
+    );
+  }
+}
+
+/// Replacement for Flutter's default red "Exception" widget. Shows the
+/// real error + stack tail so the user can read or copy what actually
+/// went wrong instead of just seeing a wall of red.
+class _FriendlyError extends StatelessWidget {
+  final FlutterErrorDetails details;
+  const _FriendlyError({required this.details});
+
+  String _stackTail() {
+    final st = details.stack?.toString() ?? '';
+    final lines = st.split('\n').take(8).join('\n');
+    return lines;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final msg = details.exceptionAsString();
+    return Material(
+      color: AppColors.bg,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.error_outline_rounded,
+                      color: AppColors.danger, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Something broke on this screen',
+                      style: AppText.sectionTitle.copyWith(fontSize: 15)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.stroke),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(msg,
+                            style: AppText.body.copyWith(
+                                fontSize: 12.5,
+                                color: AppColors.textPrimary,
+                                fontFamily: 'monospace')),
+                        const SizedBox(height: 10),
+                        Text(_stackTail(),
+                            style: AppText.meta.copyWith(
+                                fontSize: 11,
+                                color: AppColors.textTertiary,
+                                fontFamily: 'monospace')),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(
+                      text: '$msg\n\n${details.stack ?? ''}'));
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    SnackBar(
+                      content: Text('Error copied to clipboard',
+                          style: AppText.body
+                              .copyWith(color: AppColors.textPrimary)),
+                      backgroundColor: AppColors.surfaceHigh,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('Copy error',
+                      style: TextStyle(
+                        color: AppColors.onAccent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      )),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

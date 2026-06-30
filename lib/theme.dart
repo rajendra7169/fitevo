@@ -22,6 +22,8 @@ class AppPalette {
   final Color textSecondary;
   final Color textTertiary;
   final Color streak;
+  // Cycle / period log accent — soft rose, distinct from danger and fat.
+  final Color period;
   // Semantic
   final Color success;
   final Color warning;
@@ -48,6 +50,7 @@ class AppPalette {
     required this.textSecondary,
     required this.textTertiary,
     required this.streak,
+    required this.period,
     required this.success,
     required this.warning,
     required this.danger,
@@ -64,30 +67,64 @@ class AppPalette {
 //   - Indigo brightened on dark so it doesn't disappear
 // ============================================================================
 
+// ============================================================================
+// NEON DARK — not wired up (kept for reference / future use)
+//   - True near-black bg + electric lime accent
+//   - Switch main.dart to `darkPalette` to activate
+// ============================================================================
 const AppPalette darkPalette = AppPalette(
+  brightness: Brightness.dark,
+  bg: Color(0xFF0A0A0A),        // near-true black
+  surface: Color(0xFF161616),
+  surfaceHigh: Color(0xFF1F1F1F),
+  stroke: Color(0xFF2A2A2A),
+  accent: Color(0xFFD4FF3A),    // electric lime
+  accentDim: Color(0xFF8FB31E),
+  accentSoft: Color(0xFF1B2308), // tinted chip bg
+  onAccent: Color(0xFF0A0A0A),   // black text reads "go" on lime
+  calorieFrom: Color(0xFFD4FF3A),
+  calorieTo: Color(0xFF6FE36F),  // lime → leaf
+  protein: Color(0xFF6FE36F),    // leaf
+  carbs: Color(0xFFE9C547),      // gold
+  fat: Color(0xFFE07A8C),        // berry
+  water: Color(0xFF6B86C9),
+  fiber: Color(0xFFB48BCF),
+  textPrimary: Color(0xFFF5F5F5),
+  textSecondary: Color(0xFFB8B8B8),
+  textTertiary: Color(0xFF707070),
+  streak: Color(0xFFD4FF3A),
+  period: Color(0xFFD27A92),
+  success: Color(0xFF6FE36F),
+  warning: Color(0xFFE9C547),
+  danger: Color(0xFFE45656),
+);
+
+/// Saffron dark — warm candle-lit surfaces, same orange accent as light mode.
+const AppPalette warmDarkPalette = AppPalette(
   brightness: Brightness.dark,
   bg: Color(0xFF12100E),
   surface: Color(0xFF1B1916),
   surfaceHigh: Color(0xFF25221E),
   stroke: Color(0xFF2F2B25),
-  accent: Color(0xFFE8702C), // Saffron lifted for dark contrast
+  accent: Color(0xFFE8702C),
   accentDim: Color(0xFF8A4318),
-  accentSoft: Color(0xFF2A1F18), // tinted chip bg
-  onAccent: Color(0xFFFFFFFF), // white reads premium on warm saffron
-  calorieFrom: Color(0xFFE8702C), // saffron
-  calorieTo: Color(0xFFC9A64A), // gold
-  protein: Color(0xFF6BA66B), // leaf, brightened for dark
-  carbs: Color(0xFFC9A64A), // gold
-  fat: Color(0xFFB5697A), // berry-soft
-  water: Color(0xFF6B86C9), // indigo brightened so it shows on dark
-  fiber: Color(0xFFB48BCF), // muted plum
-  textPrimary: Color(0xFFF4ECDD), // warm paper
-  textSecondary: Color(0xFFC7BFB0), // warm soft
-  textTertiary: Color(0xFF7A7367), // warm muted
-  streak: Color(0xFFE8B65A), // gold-orange
-  success: Color(0xFF6BA66B), // leaf
-  warning: Color(0xFFC9A64A), // gold
-  danger: Color(0xFFE45656), // distinct from saffron (cooler red)
+  accentSoft: Color(0xFF2A1F18),
+  onAccent: Color(0xFFFFFFFF),
+  calorieFrom: Color(0xFFE8702C),
+  calorieTo: Color(0xFFC9A64A),
+  protein: Color(0xFF6BA66B),
+  carbs: Color(0xFFC9A64A),
+  fat: Color(0xFFB5697A),
+  water: Color(0xFF6B86C9),
+  fiber: Color(0xFFB48BCF),
+  textPrimary: Color(0xFFF4ECDD),
+  textSecondary: Color(0xFFC7BFB0),
+  textTertiary: Color(0xFF7A7367),
+  streak: Color(0xFFE8B65A),
+  period: Color(0xFFD27A92),
+  success: Color(0xFF6BA66B),
+  warning: Color(0xFFC9A64A),
+  danger: Color(0xFFE45656),
 );
 
 const AppPalette lightPalette = AppPalette(
@@ -111,6 +148,7 @@ const AppPalette lightPalette = AppPalette(
   textSecondary: Color(0xFF3A332A), // ink soft
   textTertiary: Color(0xFF8A8276), // muted
   streak: Color(0xFFA33A0D), // saffron deep
+  period: Color(0xFFB04A66), // rose-deep for cream legibility
   success: Color(0xFF3F7A4A),
   warning: Color(0xFFB47A1A),
   danger: Color(0xFFC73030), // distinctly redder than saffron
@@ -140,6 +178,7 @@ class AppColors {
   static Color get textSecondary => _palette.textSecondary;
   static Color get textTertiary => _palette.textTertiary;
   static Color get streak => _palette.streak;
+  static Color get period => _palette.period;
   static Color get success => _palette.success;
   static Color get warning => _palette.warning;
   static Color get danger => _palette.danger;

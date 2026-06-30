@@ -13,6 +13,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../core/health_math.dart';
 import '../core/workout_math.dart';
 import '../data/models/food_entry.dart';
+import '../data/models/daily_log.dart';
 import '../data/models/profile.dart';
 import '../data/models/workout_session.dart';
 import '../data/repositories/nutrition_repo.dart';
@@ -23,13 +24,16 @@ import '../features/food/water_detail_page.dart';
 import '../features/food/todays_food_page.dart';
 import '../features/workout/workout_logger_page.dart';
 import '../features/workout/workout_page.dart';
+import '../features/workout/workout_photos.dart';
 import '../services/ai/ai_service.dart';
 import '../services/hero_greeting.dart';
-import 'adaptive_nudge_card.dart';
-import 'coach_context_nudge.dart';
+import '../data/models/enums.dart' show Gender;
+import '../data/repositories/period_repo.dart' show CycleInsight;
+import 'coach_insights_hub.dart';
+import 'daily_meal_plan_card.dart';
+import 'period_log_card.dart';
 import 'quick_weigh_in_card.dart';
 import 'todays_activity_card.dart';
-import 'weekly_recap_card.dart';
 import '../services/progress/streak_calc.dart';
 import '../state/providers.dart';
 import '../theme.dart';
@@ -97,17 +101,29 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 16),
             section(4, _WaterFiberChips(profile: profile, totals: totals)),
             const SizedBox(height: 22),
-            section(5, TodaysActivityCard(profile: profile)),
+            // Workout card high up — daily headline action. Photo
+            // variant when there's an active day to start, compact
+            // text variant for rest / no-routine states.
+            section(5, const _WorkoutCard()),
+            const SizedBox(height: 18),
+            // AI drafts 3 meals at the start of the day to hit today's
+            // adjusted macros. Card persists until user dismisses or
+            // the day rolls over.
+            section(6, const DailyMealPlanCard()),
+            const SizedBox(height: 18),
+            section(7, TodaysActivityCard(profile: profile)),
             const SizedBox(height: 10),
-            section(6, const QuickWeighInCard()),
-            const SizedBox(height: 10),
-            section(7, const CoachContextNudge()),
-            const SizedBox(height: 22),
-            section(8, const AdaptiveNudgeCard()),
-            const SizedBox(height: 22),
-            section(9, const _WorkoutCard()),
-            const SizedBox(height: 22),
-            section(10, const WeeklyRecapCard()),
+            section(8, const QuickWeighInCard()),
+            if (profile.gender == Gender.female) ...[
+              const SizedBox(height: 10),
+              section(9, const PeriodLogCard()),
+            ],
+            const SizedBox(height: 18),
+            // Single Coach Insights hub — used to be 4 stacked cards
+            // (proactive nudge, retune, adaptive, missing-details).
+            // Now shows the highest-priority one with a "1 of N" pill
+            // and arrows. Hides entirely when nothing is active.
+            section(10, const CoachInsightsHub()),
             const SizedBox(height: 22),
             section(11, _RecentMealsShelf(entries: entries)),
           ],
@@ -397,6 +413,9 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
       'what', 'should', 'how', 'why', 'when', 'where', 'which',
       'can you', 'tell me', 'help', 'suggest', 'recommend', 'give me',
       'advice', 'advise', 'show me', 'is it', 'do i',
+      // Yes/no question starters — covers "am I overeating?",
+      // "are these fats healthy?", "is my fiber low?", "did I…".
+      'am i', 'are', 'is', 'did i', 'did', 'have i', 'will',
     ];
     for (final s in starters) {
       if (t == s || t.startsWith('$s ')) return true;
@@ -420,7 +439,41 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
         _toast('Still loading your profile — try again in a moment.');
         return;
       }
-      final userContext = _buildCoachContext(profile, totals);
+      // Pull today's food log so the coach can answer item-level
+      // questions ("how many eggs did I eat?", "how much rice?", "is
+      // this fat healthy?"). Also pull all entries to summarize the
+      // last 7 days for week-over-week questions.
+      final todayEntries =
+          ref.read(todayEntriesProvider).valueOrNull ?? const <FoodEntry>[];
+      final allEntries =
+          ref.read(allFoodEntriesProvider).valueOrNull ?? const <FoodEntry>[];
+      // For female users, the cycle insight (period day, days since last
+      // flow, est. cycle length) is relevant context for hunger, water,
+      // and training advice — pipe it through.
+      final cycle = profile.gender == Gender.female
+          ? ref.read(cycleInsightProvider)
+          : null;
+      // Today's activity log so the AI sees walking/running and the
+      // bumped calorie target — otherwise it scolds the user for being
+      // "over" when their run earned them the headroom.
+      final todayLog = ref.read(todayLogProvider).valueOrNull;
+      // All recent DailyLogs so per-day breakdown in the context can
+      // attribute activity calories per day for history questions.
+      final allLogs =
+          ref.read(allDailyLogsProvider).valueOrNull ?? const <DailyLog>[];
+      // Weight trend so the AI sees whether the user is actually
+      // moving toward their goal, not just whether they hit macros.
+      final weightTrend = ref.read(weightTrendProvider);
+      final userContext = _buildCoachContext(
+        profile,
+        totals,
+        todayEntries: todayEntries,
+        allEntries: allEntries,
+        cycle: cycle,
+        todayLog: todayLog,
+        allLogs: allLogs,
+        weightTrendLines: weightTrend.toContextLines(),
+      );
       // Send history as it stood BEFORE this turn, plus the new
       // message as latestUserMessage — matches the coach_page.dart
       // contract.
@@ -456,27 +509,212 @@ class _AiInputBarState extends ConsumerState<_AiInputBar> {
     }
   }
 
-  String _buildCoachContext(Profile profile, DailyTotals totals) {
-    final calLeft =
-        (profile.effectiveCalorieTarget - totals.calories).clamp(0, 99999);
+  String _buildCoachContext(
+    Profile profile,
+    DailyTotals totals, {
+    List<FoodEntry> todayEntries = const [],
+    List<FoodEntry> allEntries = const [],
+    CycleInsight? cycle,
+    DailyLog? todayLog,
+    List<DailyLog> allLogs = const [],
+    String weightTrendLines = '',
+  }) {
+    // Activity-adjusted targets — so the AI doesn't say "you're 300
+    // over" when the user logged a 5 km run that earned the headroom.
+    final calTarget = TodaysActivityMath.effectiveTodayCalorieTarget(
+        profile: profile, log: todayLog);
+    final macroTargets = TodaysActivityMath.effectiveTodayMacros(
+        profile: profile, log: todayLog);
+    final calLeft = (calTarget - totals.calories).clamp(0, 99999);
     final proteinLeft =
-        (profile.effectiveProteinTarget - totals.proteinG).clamp(0, 99999);
-    final carbLeft =
-        (profile.effectiveCarbTarget - totals.carbsG).clamp(0, 99999);
-    final fatLeft = (profile.effectiveFatTarget - totals.fatG).clamp(0, 99999);
+        (macroTargets.proteinG - totals.proteinG).clamp(0, 99999);
+    final carbLeft = (macroTargets.carbG - totals.carbsG).clamp(0, 99999);
+    final fatLeft = (macroTargets.fatG - totals.fatG).clamp(0, 99999);
+    // Activity summary so the AI can name what bumped the target.
+    String? activityLine;
+    if (todayLog != null) {
+      final pieces = <String>[];
+      if (todayLog.walkingKmToday > 0) {
+        pieces.add('${todayLog.walkingKmToday.toStringAsFixed(1)} km walked');
+      }
+      if (todayLog.runningKmToday > 0) {
+        pieces.add('${todayLog.runningKmToday.toStringAsFixed(1)} km run');
+      }
+      if (todayLog.otherCardioMinutes > 0) {
+        pieces.add('${todayLog.otherCardioMinutes} min other cardio');
+      }
+      if (pieces.isNotEmpty) {
+        final bonus = calTarget - profile.effectiveCalorieTarget;
+        activityLine = 'Activity today: ${pieces.join(' · ')}'
+            '${bonus > 0 ? ' (+$bonus kcal earned)' : ''}';
+      }
+    }
+
+    // Per-item lines for today so the coach can answer "how many eggs",
+    // "how much rice", "is this fat healthy", etc. Keep entries terse —
+    // description + amount + macros + fiber — to stay inside the model's
+    // context budget when the log is long.
+    final todayLines = todayEntries.map((e) {
+      final qty = [e.quantity, e.unit]
+          .where((s) => s.isNotEmpty)
+          .join(' ')
+          .trim();
+      final label = qty.isEmpty ? e.description : '$qty ${e.description}';
+      final fiber = e.fiberG > 0 ? ', fiber ${e.fiberG}g' : '';
+      return '- $label · ${e.calories} kcal · '
+          'P ${e.proteinG}g, C ${e.carbsG}g, F ${e.fatG}g$fiber';
+    }).toList();
+
+    // 7-day per-day breakdown so the AI can answer "what about
+    // yesterday?", "how was Tuesday?", "did I hit protein on Monday?"
+    // and similar history questions instead of saying "I don't know".
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekAgo = today.subtract(const Duration(days: 6));
+    final recent = allEntries
+        .where((e) => !e.timestamp.isBefore(weekAgo))
+        .toList();
+    final logsByDay = <String, DailyLog>{
+      for (final l in allLogs) l.dateKey: l,
+    };
+    final foodsByDay = <String, List<FoodEntry>>{};
+    for (final e in recent) {
+      (foodsByDay[e.dateKey] ??= []).add(e);
+    }
+    // Walk back from yesterday to 6 days ago. Skip today — today is
+    // already described above in detail.
+    final perDayLines = <String>[];
+    int wCal = 0, wProt = 0, wCarb = 0, wFat = 0, wFib = 0;
+    final foodCounts = <String, int>{};
+    for (var i = 1; i <= 6; i++) {
+      final day = today.subtract(Duration(days: i));
+      final key = DailyLog.keyFor(day);
+      final entries = foodsByDay[key] ?? const <FoodEntry>[];
+      final log = logsByDay[key];
+      // Day target adjusts for that day's logged activity, matching
+      // what the user saw on the day in-app.
+      final dayCalTarget = TodaysActivityMath.effectiveTodayCalorieTarget(
+          profile: profile, log: log);
+      final dayMacros = TodaysActivityMath.effectiveTodayMacros(
+          profile: profile, log: log);
+      var c = 0, p = 0, cb = 0, f = 0, fb = 0;
+      for (final e in entries) {
+        c += e.calories;
+        p += e.proteinG;
+        cb += e.carbsG;
+        f += e.fatG;
+        fb += e.fiberG;
+        final k = e.description.toLowerCase().trim();
+        if (k.isNotEmpty) foodCounts[k] = (foodCounts[k] ?? 0) + 1;
+      }
+      wCal += c;
+      wProt += p;
+      wCarb += cb;
+      wFat += f;
+      wFib += fb;
+      // Friendly day label so "yesterday" / "Tuesday" both work.
+      String dayLabel;
+      if (i == 1) {
+        dayLabel = 'Yesterday';
+      } else {
+        const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        dayLabel = '${names[day.weekday - 1]} ${day.month}/${day.day}';
+      }
+      if (entries.isEmpty &&
+          (log == null ||
+              (log.walkingKmToday == 0 &&
+                  log.runningKmToday == 0 &&
+                  log.otherCardioMinutes == 0))) {
+        perDayLines.add('- $dayLabel: nothing logged');
+        continue;
+      }
+      // Activity tail
+      final actBits = <String>[];
+      if (log != null) {
+        if (log.walkingKmToday > 0) {
+          actBits.add('${log.walkingKmToday.toStringAsFixed(1)}km walk');
+        }
+        if (log.runningKmToday > 0) {
+          actBits.add('${log.runningKmToday.toStringAsFixed(1)}km run');
+        }
+        if (log.otherCardioMinutes > 0) {
+          actBits.add('${log.otherCardioMinutes}min cardio');
+        }
+      }
+      // Spell out the bonus earned that day so the model doesn't
+      // double-count: it sees both the activity AND the resulting
+      // adjusted target. Past failure mode: model said "you're 300
+      // over" against the static target after the user walked 5 km.
+      final dayBonus = dayCalTarget - profile.effectiveCalorieTarget;
+      final actDetail = actBits.isEmpty
+          ? ''
+          : ' · activity: ${actBits.join(', ')}'
+              '${dayBonus > 0 ? ' (+$dayBonus kcal earned, already added to target)' : ''}';
+      // Top 3 items by calories so the AI can name what dominated.
+      final sortedItems = List<FoodEntry>.from(entries)
+        ..sort((a, b) => b.calories.compareTo(a.calories));
+      final top = sortedItems
+          .take(3)
+          .map((e) =>
+              '${e.description.isEmpty ? e.rawInput : e.description}(${e.calories})')
+          .join(', ');
+      final deltaKcal = c - dayCalTarget;
+      final deltaLabel = deltaKcal == 0
+          ? 'on target'
+          : deltaKcal > 0
+              ? '+$deltaKcal over'
+              : '${-deltaKcal} under';
+      perDayLines.add(
+          '- $dayLabel: ate $c / target $dayCalTarget kcal ($deltaLabel) · '
+          'P $p/${dayMacros.proteinG}g, C $cb/${dayMacros.carbG}g, F $f/${dayMacros.fatG}g, '
+          'fiber ${fb}g · top: $top$actDetail');
+    }
+    final topFoods = foodCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topFoodsLine = topFoods
+        .take(10)
+        .map((e) => '${e.key}×${e.value}')
+        .join(', ');
+
     return [
       'Name: ${profile.displayName.isEmpty ? "user" : profile.displayName}',
       'Goal: ${profile.goal.name}',
       if (profile.country.isNotEmpty) 'Country: ${profile.country}',
       'Diet: ${profile.dietPreference.name}',
-      'Daily targets: ${profile.effectiveCalorieTarget} kcal · '
-          '${profile.effectiveProteinTarget}g P · '
-          '${profile.effectiveCarbTarget}g C · '
-          '${profile.effectiveFatTarget}g F',
+      'Daily targets (activity-adjusted today): $calTarget kcal · '
+          '${macroTargets.proteinG}g P · '
+          '${macroTargets.carbG}g C · '
+          '${macroTargets.fatG}g F',
       'Today consumed: ${totals.calories} kcal · '
-          '${totals.proteinG}g P · ${totals.carbsG}g C · ${totals.fatG}g F',
+          '${totals.proteinG}g P · ${totals.carbsG}g C · ${totals.fatG}g F · '
+          'fiber ${totals.fiberG}g',
       'Remaining today: $calLeft kcal · ${proteinLeft}g P · '
           '${carbLeft}g C · ${fatLeft}g F',
+      ?activityLine,
+      if (todayLines.isNotEmpty)
+        'Today\'s logged food (${todayEntries.length} items):\n'
+            '${todayLines.join('\n')}',
+      if (perDayLines.isNotEmpty)
+        'Last 6 days (most recent first — use this for "yesterday", '
+            '"Tuesday", "this week" type questions):\n'
+            '${perDayLines.join('\n')}',
+      if (recent.isNotEmpty)
+        'Last 7 days totals (incl. today): $wCal kcal · ${wProt}g P · '
+            '${wCarb}g C · ${wFat}g F · fiber ${wFib}g across '
+            '${recent.length} entries',
+      if (topFoodsLine.isNotEmpty)
+        'Most logged foods (7 days): $topFoodsLine',
+      if (weightTrendLines.isNotEmpty) weightTrendLines,
+      if (cycle != null && cycle.daysSinceLastFlow != null)
+        'Cycle context: ${cycle.todayIsPeriodDay ? "today is a period day" : "${cycle.daysSinceLastFlow} day(s) since last flow"}'
+            '${cycle.currentPeriodDay != null ? " (day ${cycle.currentPeriodDay})" : ""}'
+            '${cycle.estimatedCycleLength != null ? ", est. ${cycle.estimatedCycleLength}-day cycle" : ""}'
+            '. Factor late-luteal/period hunger and water needs when advising.',
+      'Coach guidance: When the user asks about specific foods they ate '
+          '(how many eggs, how much rice, etc.), answer from the logged '
+          'food list above. When asked about food quality, fiber sources, '
+          'or swaps, give specific, practical suggestions referencing '
+          'their actual diet preference and goal.',
     ].join('\n');
   }
 
@@ -924,7 +1162,12 @@ class _CalorieRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remaining = math.max(0, target - consumed);
+    // When consumed exceeds target, surface the overage instead of
+    // collapsing to 0 — the center label flips to "OVER" so the number
+    // (always positive in the UI) reads naturally.
+    final delta = target - consumed;
+    final isOver = delta < 0;
+    final centerValue = delta.abs();
     final progress = target == 0 ? 0.0 : (consumed / target);
 
     return Center(
@@ -967,24 +1210,31 @@ class _CalorieRing extends StatelessWidget {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('CALORIES LEFT', style: AppText.label),
+                Text(isOver ? 'CALORIES OVER' : 'CALORIES LEFT',
+                    style: AppText.label.copyWith(
+                        color: isOver ? AppColors.danger : null)),
                 const SizedBox(height: 12),
                 TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: remaining.toDouble()),
+                  tween: Tween(begin: 0, end: centerValue.toDouble()),
                   duration: const Duration(milliseconds: 800),
                   curve: Curves.easeOutCubic,
-                  builder: (_, v, _) => ShaderMask(
-                    shaderCallback: (rect) => LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.textPrimary,
-                        AppColors.textPrimary.withValues(alpha: 0.85),
-                      ],
-                    ).createShader(rect),
-                    child: Text('${v.round()}',
-                        style: AppText.giantNumber.copyWith(fontSize: 68)),
-                  ),
+                  builder: (_, v, _) {
+                    final top = isOver
+                        ? AppColors.danger
+                        : AppColors.textPrimary;
+                    final bottom = isOver
+                        ? AppColors.danger.withValues(alpha: 0.85)
+                        : AppColors.textPrimary.withValues(alpha: 0.85);
+                    return ShaderMask(
+                      shaderCallback: (rect) => LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [top, bottom],
+                      ).createShader(rect),
+                      child: Text('${v.round()}',
+                          style: AppText.giantNumber.copyWith(fontSize: 68)),
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 Text('of $target target',
@@ -1364,6 +1614,7 @@ class _WaterFiberChips extends ConsumerWidget {
             consumedMl: totals.waterMl,
             targetMl: waterTargetMl,
             progress: waterProgress.clamp(0.0, 1.0),
+            isOver: waterProgress > 1.0,
           ),
         ),
         const SizedBox(width: 8),
@@ -1415,11 +1666,17 @@ class _WaterFiberChips extends ConsumerWidget {
 class _WaterChip extends ConsumerStatefulWidget {
   final int consumedMl;
   final int targetMl;
+  /// Clamped 0..1 — what the wave painter uses for "fill" so it never
+  /// tries to render past full.
   final double progress;
+  /// True when consumedMl exceeds targetMl. Triggers an up-arrow badge
+  /// + value tint so the user sees they're over hydration target.
+  final bool isOver;
   const _WaterChip({
     required this.consumedMl,
     required this.targetMl,
     required this.progress,
+    this.isOver = false,
   });
 
   @override
@@ -1661,8 +1918,13 @@ class _WaterChipState extends ConsumerState<_WaterChip>
                                     ),
                                   ),
                                 ),
-                                Icon(Icons.add_rounded,
-                                    size: 14, color: AppColors.water),
+                                Icon(
+                                  widget.isOver
+                                      ? Icons.arrow_upward_rounded
+                                      : Icons.add_rounded,
+                                  size: 14,
+                                  color: AppColors.water,
+                                ),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -1675,8 +1937,12 @@ class _WaterChipState extends ConsumerState<_WaterChip>
                                     TextSpan(
                                       text: (widget.consumedMl / 1000)
                                           .toStringAsFixed(1),
-                                      style: AppText.bigNumber
-                                          .copyWith(fontSize: 18),
+                                      style: AppText.bigNumber.copyWith(
+                                        fontSize: 18,
+                                        color: widget.isOver
+                                            ? AppColors.water
+                                            : AppColors.textPrimary,
+                                      ),
                                     ),
                                     TextSpan(
                                       text:
@@ -1963,13 +2229,14 @@ class _WorkoutCard extends ConsumerWidget {
         subtitle: 'Recovery matters as much as training.',
       );
     } else {
-      shell = _WorkoutCardShell(
-        icon: Icons.fitness_center_rounded,
-        accent: AppColors.accent,
+      // Tall photo-card variant for the active day — drops in an
+      // athlete photo if one's been added under assets/images/workouts/
+      // (gracefully falls back to a gradient otherwise).
+      shell = _WorkoutPhotoCard(
         label: 'TODAY',
-        title: day.name,
+        title: day.name.toUpperCase(),
         subtitle: '${day.items.length} exercises · ${routine.name}',
-        action: 'Start',
+        photoPath: WorkoutPhotos.forDayName(day.name),
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -2037,7 +2304,6 @@ class _WorkoutCardShell extends StatelessWidget {
   final String label;
   final String title;
   final String subtitle;
-  final String? action;
   final VoidCallback? onTap;
   const _WorkoutCardShell({
     required this.icon,
@@ -2045,7 +2311,6 @@ class _WorkoutCardShell extends StatelessWidget {
     required this.label,
     required this.title,
     required this.subtitle,
-    this.action,
     this.onTap,
   });
 
@@ -2087,27 +2352,129 @@ class _WorkoutCardShell extends StatelessWidget {
                 ],
               ),
             ),
-            if (action != null && onTap != null) ...[
-              const SizedBox(width: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  action!,
-                  style: TextStyle(
-                    color: AppColors.onAccent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ),
-            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tall photo-forward variant of the workout card. Used when there's an
+/// active day to launch. Matches the "personalized plan" reference
+/// design: full-bleed athlete photo, label + title overlaid bottom-left,
+/// big neon "Start" button bottom-right.
+class _WorkoutPhotoCard extends StatelessWidget {
+  final String label;
+  final String title;
+  final String subtitle;
+  final String photoPath;
+  final VoidCallback onTap;
+  const _WorkoutPhotoCard({
+    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.photoPath,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: SizedBox(
+          height: 180,
+          child: WorkoutPhotoBackground(
+            assetPath: photoPath,
+            overlayStrength: 0.5,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: AppText.label.copyWith(
+                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.85),
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.sectionTitle.copyWith(
+                                fontSize: 24,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.4,
+                                height: 1.05,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppText.meta.copyWith(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.78),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  AppColors.accent.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.play_arrow_rounded,
+                                color: AppColors.onAccent, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Start',
+                              style: TextStyle(
+                                color: AppColors.onAccent,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -26,6 +26,12 @@ class _Draft {
   String focusNotes = '';
   int wakeMin = 420; // 7:00 AM
   int sleepMin = 1380; // 11:00 PM
+  // Per-day schedule. False = single wake/sleep applies to every day.
+  // When true, [wakeMinByDay] / [sleepMinByDay] hold 7 entries each,
+  // index 0 = Monday … 6 = Sunday.
+  bool perDaySchedule = false;
+  List<int> wakeMinByDay = List<int>.filled(7, 420);
+  List<int> sleepMinByDay = List<int>.filled(7, 1380);
   bool takesSupplements = false;
   int creatineG = 0;
   int proteinScoops = 0;
@@ -158,6 +164,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       ..dietPreference = _draft.dietPreference
       ..wakeTimeMin = _draft.wakeMin
       ..sleepTimeMin = _draft.sleepMin
+      ..wakeMinByDay =
+          _draft.perDaySchedule ? List<int>.from(_draft.wakeMinByDay) : []
+      ..sleepMinByDay =
+          _draft.perDaySchedule ? List<int>.from(_draft.sleepMinByDay) : []
       ..creatineGramsPerDay = _draft.takesSupplements ? _draft.creatineG : 0
       ..proteinScoopsPerDay =
           _draft.takesSupplements ? _draft.proteinScoops : 0
@@ -526,6 +536,10 @@ class _StepGoal extends StatelessWidget {
             value: draft.goesGym,
             onChanged: (v) {
               draft.goesGym = v;
+              // Non-gym users don't have a meaningful "rest day" concept,
+              // so clear any leftover selections to avoid the workout
+              // module showing a phantom rest day.
+              if (!v) draft.restDays = const [];
               onChanged();
             },
           ),
@@ -1290,30 +1304,94 @@ class _StepLifestyle extends StatelessWidget {
           const SizedBox(height: 24),
           Text('WAKE & SLEEP', style: AppText.label),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _TimePickerTile(
-                  label: 'Wake',
-                  minutes: draft.wakeMin,
-                  onChanged: (m) {
-                    draft.wakeMin = m;
-                    onChanged();
-                  },
+          if (!draft.perDaySchedule)
+            Row(
+              children: [
+                Expanded(
+                  child: _TimePickerTile(
+                    label: 'Wake',
+                    minutes: draft.wakeMin,
+                    onChanged: (m) {
+                      draft.wakeMin = m;
+                      onChanged();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _TimePickerTile(
+                    label: 'Sleep',
+                    minutes: draft.sleepMin,
+                    onChanged: (m) {
+                      draft.sleepMin = m;
+                      onChanged();
+                    },
+                  ),
+                ),
+              ],
+            )
+          else
+            _PerDayScheduleEditor(
+              wakeMinByDay: draft.wakeMinByDay,
+              sleepMinByDay: draft.sleepMinByDay,
+              onChanged: onChanged,
+            ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              // Switching ON seeds the per-day arrays from the single
+              // values so the user sees their current pick on every row
+              // and can tweak only the days that differ.
+              if (!draft.perDaySchedule) {
+                draft.wakeMinByDay = List<int>.filled(7, draft.wakeMin);
+                draft.sleepMinByDay = List<int>.filled(7, draft.sleepMin);
+              }
+              draft.perDaySchedule = !draft.perDaySchedule;
+              onChanged();
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                color: draft.perDaySchedule
+                    ? AppColors.accent.withValues(alpha: 0.10)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: draft.perDaySchedule
+                      ? AppColors.accent
+                      : AppColors.stroke,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _TimePickerTile(
-                  label: 'Sleep',
-                  minutes: draft.sleepMin,
-                  onChanged: (m) {
-                    draft.sleepMin = m;
-                    onChanged();
-                  },
-                ),
+              child: Row(
+                children: [
+                  Icon(
+                    draft.perDaySchedule
+                        ? Icons.check_circle_rounded
+                        : Icons.calendar_view_week_rounded,
+                    size: 18,
+                    color: draft.perDaySchedule
+                        ? AppColors.accent
+                        : AppColors.textTertiary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      draft.perDaySchedule
+                          ? 'Per-day schedule — set wake & sleep for each day'
+                          : 'Different time each day?',
+                      style: AppText.body.copyWith(
+                        color: draft.perDaySchedule
+                            ? AppColors.accent
+                            : AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
           if (draft.goesGym) ...[
           const SizedBox(height: 26),
@@ -1474,25 +1552,27 @@ class _StepLifestyle extends StatelessWidget {
               ],
             ),
           ],
-          const SizedBox(height: 26),
-          Text('REST DAYS', style: AppText.label),
-          const SizedBox(height: 6),
-          Text(
-              'Days you don\'t train. We\'ll show a lower calorie target for these days.',
-              style: AppText.meta.copyWith(fontSize: 12)),
-          const SizedBox(height: 10),
-          _WeekdayChips(
-            selected: draft.restDays.toSet(),
-            onChanged: (s) {
-              draft.restDays = s.toList()..sort();
-              // Default weigh-in to day before first rest day.
-              if (draft.weighInWeekday == null && s.isNotEmpty) {
-                final first = (s.toList()..sort()).first;
-                draft.weighInWeekday = first == 1 ? 7 : first - 1;
-              }
-              onChanged();
-            },
-          ),
+          if (draft.goesGym) ...[
+            const SizedBox(height: 26),
+            Text('REST DAYS', style: AppText.label),
+            const SizedBox(height: 6),
+            Text(
+                'Days you don\'t train. We\'ll show a lower calorie target for these days.',
+                style: AppText.meta.copyWith(fontSize: 12)),
+            const SizedBox(height: 10),
+            _WeekdayChips(
+              selected: draft.restDays.toSet(),
+              onChanged: (s) {
+                draft.restDays = s.toList()..sort();
+                // Default weigh-in to day before first rest day.
+                if (draft.weighInWeekday == null && s.isNotEmpty) {
+                  final first = (s.toList()..sort()).first;
+                  draft.weighInWeekday = first == 1 ? 7 : first - 1;
+                }
+                onChanged();
+              },
+            ),
+          ],
           const SizedBox(height: 22),
           Text('WEIGH-IN CADENCE', style: AppText.label),
           const SizedBox(height: 6),
@@ -1607,6 +1687,67 @@ class _TimePickerTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 7-day wake/sleep grid. Each row is a weekday with its own pair of
+/// time-picker tiles. Mutates the parent's [wakeMinByDay] /
+/// [sleepMinByDay] lists in place and pings [onChanged] so the parent's
+/// `setState` re-renders. Reused from both onboarding and settings.
+class _PerDayScheduleEditor extends StatelessWidget {
+  final List<int> wakeMinByDay;
+  final List<int> sleepMinByDay;
+  final VoidCallback onChanged;
+  const _PerDayScheduleEditor({
+    required this.wakeMinByDay,
+    required this.sleepMinByDay,
+    required this.onChanged,
+  });
+
+  static const _days = <String>[
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < 7; i++) ...[
+          Row(
+            children: [
+              SizedBox(
+                width: 42,
+                child: Text(_days[i],
+                    style: AppText.label.copyWith(fontSize: 11)),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _TimePickerTile(
+                  label: 'Wake',
+                  minutes: wakeMinByDay[i],
+                  onChanged: (m) {
+                    wakeMinByDay[i] = m;
+                    onChanged();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _TimePickerTile(
+                  label: 'Sleep',
+                  minutes: sleepMinByDay[i],
+                  onChanged: (m) {
+                    sleepMinByDay[i] = m;
+                    onChanged();
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (i < 6) const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 }

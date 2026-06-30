@@ -31,17 +31,25 @@ subprojects {
         } catch (_: Exception) {
             // Method not present on this AGP version — nothing to patch.
         }
-        // Force compileSdk 34 on every Android library subproject.
-        // isar_flutter_libs ships with compileSdk 31 which is too low
-        // for android:attr/lStar (introduced in API 31's R values).
+    }
+
+    // Force compileSdk 36 on every Android library subproject after
+    // the plugin has finished its own configuration. isar_flutter_libs
+    // ships with compileSdk 31, which is too low for android:attr/lStar
+    // (introduced in API 31 R values) and breaks release resource linking.
+    // 36 matches the app module so AAR metadata checks for current androidx
+    // (activity 1.12.x, core 1.18.x) pass.
+    // Doing this in afterEvaluate beats plugins.withId for AGP 8+, where
+    // the plugin sets compileSdk later than the withId callback fires.
+    afterEvaluate {
+        val androidExt = extensions.findByName("android") ?: return@afterEvaluate
         try {
             androidExt.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
-                .invoke(androidExt, 34)
+                .invoke(androidExt, 36)
         } catch (_: Exception) {
-            // Older AGP exposes only the string overload.
             try {
                 androidExt.javaClass.getMethod("setCompileSdkVersion", String::class.java)
-                    .invoke(androidExt, "android-34")
+                    .invoke(androidExt, "android-36")
             } catch (_: Exception) {}
         }
     }

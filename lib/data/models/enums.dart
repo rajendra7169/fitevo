@@ -69,6 +69,33 @@ enum CyclePhase {
   luteal, // days 17-28
 }
 
+/// Per-day flow level for menstrual cycle logging. Spotting is its own
+/// category (not just "light") so cycle math can distinguish a real
+/// period day from inter-cycle spotting when estimating cycle length.
+enum MenstrualFlow {
+  none,
+  spotting,
+  light,
+  medium,
+  heavy,
+}
+
+/// Common cycle-related symptoms the user can tag onto a period day.
+/// Names are normalized for storage; the UI maps to user-facing labels.
+enum PeriodSymptom {
+  cramps,
+  headache,
+  bloating,
+  fatigue,
+  moodSwings,
+  backPain,
+  breastTenderness,
+  nausea,
+  acne,
+  cravings,
+  insomnia,
+}
+
 enum Equipment {
   bodyweight,
   dumbbell,

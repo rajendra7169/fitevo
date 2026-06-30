@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "com.example.fitevo"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

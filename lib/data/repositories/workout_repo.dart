@@ -62,17 +62,47 @@ class WorkoutRepo {
 
   /// Resolve which routine day to do today.
   /// Strategy:
-  ///   1. If the active routine has a day with weekday == today's weekday → that.
-  ///   2. Otherwise, pick the day that hasn't been trained in the longest
+  ///   1. If [restWeekdays] is provided (the user's profile rest days),
+  ///      it's the source of truth: today's weekday in that set returns
+  ///      a synthetic rest day, regardless of how the routine was
+  ///      authored or AI-generated.
+  ///   2. Otherwise, if the active routine has a day with weekday ==
+  ///      today's weekday → that. A non-rest weekday match always beats
+  ///      a routine entry incorrectly flagged rest for this weekday.
+  ///   3. Otherwise, pick the day that hasn't been trained in the longest
   ///      (or the first day for a brand-new routine).
-  ///   3. Returns null if there's no active routine or it has no days.
-  Future<RoutineDay?> resolveTodaysDay(DateTime today) async {
+  ///   4. Returns null if there's no active routine or it has no days.
+  Future<RoutineDay?> resolveTodaysDay(
+    DateTime today, {
+    Set<int>? restWeekdays,
+  }) async {
     final routine = await getActiveRoutine();
     if (routine == null || routine.days.isEmpty) return null;
 
     final weekday = today.weekday; // 1=Mon..7=Sun
-    final byWeekday = routine.days.where((d) => d.weekday == weekday);
-    if (byWeekday.isNotEmpty) return byWeekday.first;
+
+    // Profile rest days override anything baked into the routine.
+    if (restWeekdays != null && restWeekdays.contains(weekday)) {
+      return RoutineDay()
+        ..name = 'Rest'
+        ..weekday = weekday
+        ..isRest = true;
+    }
+
+    // Prefer a non-rest training day for this weekday; if the routine
+    // marked this weekday rest but the user didn't, skip the stale rest
+    // entry and fall through to the least-trained day picker.
+    final exactNonRest = routine.days
+        .where((d) => d.weekday == weekday && !d.isRest)
+        .toList();
+    if (exactNonRest.isNotEmpty) return exactNonRest.first;
+
+    final exactAny = routine.days.where((d) => d.weekday == weekday);
+    // Only honor a "rest" entry when restWeekdays wasn't supplied
+    // (otherwise the user's profile already decided rest above).
+    if (restWeekdays == null && exactAny.isNotEmpty) {
+      return exactAny.first;
+    }
 
     // Find the day we've trained least recently.
     final recent = await _isar.workoutSessions

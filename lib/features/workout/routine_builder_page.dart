@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:isar/isar.dart';
 
 import '../../data/models/enums.dart';
 import '../../data/models/exercise.dart';
@@ -373,19 +374,46 @@ class _RoutineBuilderPageState extends ConsumerState<RoutineBuilderPage> {
       _toast('Add at least one exercise.');
       return;
     }
+    // Defensively clean up day data so a malformed input can't poison
+    // the Isar write. Past bug: a day with name == "" + an embedded
+    // RoutinePlanItem whose exerciseId == 0 caused saveRoutine to throw,
+    // which surfaced to the user as a red error screen.
+    for (final d in _days) {
+      if (d.name.trim().isEmpty) d.name = 'Day';
+      // Items inside a rest day shouldn't be persisted.
+      if (d.isRest) d.items = [];
+      // Drop items that point at a missing exercise (id == 0) — these
+      // sneak in if the picker crashed mid-add.
+      d.items = d.items
+          .where((i) => i.exerciseName.trim().isNotEmpty)
+          .toList();
+    }
     setState(() => _saving = true);
     try {
       final repo = ref.read(workoutRepoProvider);
-      final r = widget.edit ?? Routine();
-      r
+      // Always build a fresh Routine instance for the put. Reusing the
+      // Isar-managed `widget.edit` instance directly has caused issues
+      // when its embedded `days` list is reassigned to freshly cloned
+      // values — Isar can throw on the put depending on how the parent
+      // was loaded. A new instance with the same id is the safe path.
+      final r = Routine()
+        ..id = widget.edit?.id ?? Isar.autoIncrement
         ..name = name
+        ..description = widget.edit?.description
+        ..isActive = widget.edit?.isActive ?? false
+        ..createdAt = widget.edit?.createdAt ?? DateTime.now()
         ..days = _days;
       final saved = await repo.saveRoutine(r);
       await repo.activateRoutine(saved.id);
       if (!mounted) return;
       Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) _toast('Could not save routine.');
+    } catch (e, st) {
+      // Surface the real exception in the toast so we can debug from
+      // device instead of guessing — the old generic "Could not save"
+      // hid the actual failure for days.
+      // ignore: avoid_print
+      print('saveRoutine failed: $e\n$st');
+      if (mounted) _toast('Save failed: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

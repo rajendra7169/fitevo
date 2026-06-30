@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/food_entry.dart';
 import '../../data/models/profile.dart';
 import '../../data/repositories/nutrition_repo.dart';
+import '../../home/todays_activity_card.dart' show TodaysActivityMath;
 import '../../state/providers.dart';
 import '../../theme.dart';
 
@@ -21,10 +22,30 @@ class NutrientDetailPage extends ConsumerWidget {
     final entries = ref.watch(todayEntriesProvider).valueOrNull ?? [];
     final totals = ref.watch(todayTotalsProvider);
     final profile = ref.watch(profileStreamProvider).valueOrNull;
+    final log = ref.watch(todayLogProvider).valueOrNull;
 
     final info = nutrient.info;
     final consumed = info.consumed(totals);
-    final target = profile != null ? info.target(profile) : 0;
+    // For activity-affected macros, bump the target by today's bonus
+    // (running/walking/cardio + sleep softener) so this page agrees
+    // with the home calorie ring. Fiber + sodium aren't activity-tied.
+    int target = 0;
+    if (profile != null) {
+      if (nutrient == NutrientType.protein ||
+          nutrient == NutrientType.carbs ||
+          nutrient == NutrientType.fat) {
+        final m = TodaysActivityMath.effectiveTodayMacros(
+            profile: profile, log: log);
+        target = switch (nutrient) {
+          NutrientType.protein => m.proteinG,
+          NutrientType.carbs => m.carbG,
+          NutrientType.fat => m.fatG,
+          _ => info.target(profile),
+        };
+      } else {
+        target = info.target(profile);
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bg,

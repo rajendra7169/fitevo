@@ -6,6 +6,7 @@ import 'models/custom_food.dart';
 import 'models/daily_log.dart';
 import 'models/exercise.dart';
 import 'models/food_entry.dart';
+import 'models/period_log.dart';
 import 'models/profile.dart';
 import 'models/routine.dart';
 import 'models/workout_session.dart';
@@ -36,6 +37,7 @@ class Db {
       await isar.routines.clear();
       await isar.workoutSessions.clear();
       await isar.bodyMeasurements.clear();
+      await isar.periodLogs.clear();
     });
   }
 
@@ -52,6 +54,7 @@ class Db {
         RoutineSchema,
         WorkoutSessionSchema,
         BodyMeasurementSchema,
+        PeriodLogSchema,
       ],
       directory: dir.path,
       name: 'fitevo',

@@ -101,24 +101,36 @@ class WaterDetailPage extends ConsumerWidget {
               sliver: SliverList.separated(
                 itemCount: sortedEntries.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (ctx, i) => _SipTile(
-                  entry: sortedEntries[i],
-                  // Find original index in unsorted entries for deletion.
-                  onDelete: () async {
-                    final originalIndex = entries.indexWhere((e) =>
-                        e.minutesOfDay == sortedEntries[i].minutesOfDay &&
-                        e.ml == sortedEntries[i].ml);
-                    if (originalIndex < 0) return;
-                    await ref
-                        .read(nutritionRepoProvider)
-                        .removeWaterEntryAt(
-                            ref.read(todayProvider), originalIndex);
-                  },
-                  index: i,
-                )
-                    .animate(delay: Duration(milliseconds: 240 + i * 50))
-                    .fadeIn(duration: 280.ms)
-                    .slideX(begin: -0.05, end: 0),
+                itemBuilder: (ctx, i) {
+                  int findOriginal() => entries.indexWhere((e) =>
+                      e.minutesOfDay == sortedEntries[i].minutesOfDay &&
+                      e.ml == sortedEntries[i].ml);
+                  return _SipTile(
+                    entry: sortedEntries[i],
+                    onDelete: () async {
+                      final originalIndex = findOriginal();
+                      if (originalIndex < 0) return;
+                      await ref
+                          .read(nutritionRepoProvider)
+                          .removeWaterEntryAt(
+                              ref.read(todayProvider), originalIndex);
+                    },
+                    onEdit: () async {
+                      final originalIndex = findOriginal();
+                      if (originalIndex < 0) return;
+                      await _showEditSheet(
+                        context,
+                        ref,
+                        entry: sortedEntries[i],
+                        index: originalIndex,
+                      );
+                    },
+                    index: i,
+                  )
+                      .animate(delay: Duration(milliseconds: 240 + i * 50))
+                      .fadeIn(duration: 280.ms)
+                      .slideX(begin: -0.05, end: 0);
+                },
               ),
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
@@ -618,10 +630,11 @@ class _ReminderTileState extends ConsumerState<_ReminderTile> {
       final profile = await ref.read(profileRepoProvider).getCurrent();
       final notif = NotificationService.instance;
       if (on) {
+        final todayWeekday = DateTime.now().weekday;
         await notif.scheduleWaterReminders(
           intervalHours: settings.waterIntervalHours,
-          wakeMin: profile?.wakeTimeMin,
-          sleepMin: profile?.sleepTimeMin,
+          wakeMin: profile?.wakeMinFor(todayWeekday),
+          sleepMin: profile?.sleepMinFor(todayWeekday),
           mealTimesMin:
               settings.mealRemindersEnabled ? settings.mealTimes : const [],
         );
@@ -637,8 +650,9 @@ class _ReminderTileState extends ConsumerState<_ReminderTile> {
   String _windowSummary() {
     final settings = ref.read(appSettingsProvider);
     final profile = ref.read(profileStreamProvider).valueOrNull;
-    final wake = profile?.wakeTimeMin ?? 8 * 60;
-    final sleep = profile?.sleepTimeMin ?? 21 * 60;
+    final todayWeekday = DateTime.now().weekday;
+    final wake = profile?.wakeMinFor(todayWeekday) ?? 8 * 60;
+    final sleep = profile?.sleepMinFor(todayWeekday) ?? 21 * 60;
     final endMin = (sleep - 60).clamp(0, 1439);
     String fmt(int m) {
       final h = m ~/ 60;
@@ -735,10 +749,12 @@ class _ReminderTileState extends ConsumerState<_ReminderTile> {
 class _SipTile extends StatelessWidget {
   final WaterEntry entry;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
   final int index;
   const _SipTile({
     required this.entry,
     required this.onDelete,
+    required this.onEdit,
     required this.index,
   });
 
@@ -768,50 +784,293 @@ class _SipTile extends StatelessWidget {
             color: AppColors.danger, size: 22),
       ),
       onDismissed: (_) => onDelete(),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.stroke),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.water.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onEdit,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.stroke),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.water.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.water_drop_rounded,
+                    size: 16, color: AppColors.water),
               ),
-              child: Icon(Icons.water_drop_rounded,
-                  size: 16, color: AppColors.water),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      mlText,
+                      style: AppText.body.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    Text(
+                      _formatTime(),
+                      style: AppText.meta.copyWith(
+                          fontSize: 11.5, color: AppColors.textTertiary),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.edit_outlined,
+                  size: 16, color: AppColors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── edit sheet ────────────────────────────────────────────────────────────
+
+Future<void> _showEditSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required WaterEntry entry,
+  required int index,
+}) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+    ),
+    builder: (ctx) => _EditSipSheet(entry: entry, index: index),
+  );
+}
+
+class _EditSipSheet extends ConsumerStatefulWidget {
+  final WaterEntry entry;
+  final int index;
+  const _EditSipSheet({required this.entry, required this.index});
+
+  @override
+  ConsumerState<_EditSipSheet> createState() => _EditSipSheetState();
+}
+
+class _EditSipSheetState extends ConsumerState<_EditSipSheet> {
+  late int _ml = widget.entry.ml;
+  late TimeOfDay _time = TimeOfDay(
+      hour: widget.entry.minutesOfDay ~/ 60,
+      minute: widget.entry.minutesOfDay % 60);
+  late final TextEditingController _mlCtl =
+      TextEditingController(text: widget.entry.ml.toString());
+
+  @override
+  void dispose() {
+    _mlCtl.dispose();
+    super.dispose();
+  }
+
+  String _fmtTime(TimeOfDay t) {
+    final dt = DateTime(2000, 1, 1, t.hour, t.minute);
+    return DateFormat('h:mm a').format(dt);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _time,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.water,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _time = picked);
+  }
+
+  Future<void> _save() async {
+    final parsed = int.tryParse(_mlCtl.text.trim());
+    if (parsed == null || parsed <= 0) return;
+    await ref.read(nutritionRepoProvider).updateWaterEntryAt(
+          ref.read(todayProvider),
+          widget.index,
+          ml: parsed,
+          minutesOfDay: _time.hour * 60 + _time.minute,
+        );
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _delete() async {
+    await ref
+        .read(nutritionRepoProvider)
+        .removeWaterEntryAt(ref.read(todayProvider), widget.index);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.stroke,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    mlText,
-                    style: AppText.body.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14.5,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.water.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.water_drop_rounded,
+                    size: 16, color: AppColors.water),
+              ),
+              const SizedBox(width: 10),
+              Text('Edit sip',
+                  style: AppText.sectionTitle.copyWith(fontSize: 17)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('AMOUNT', style: AppText.label.copyWith(fontSize: 11)),
+          const SizedBox(height: 6),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceHigh,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _mlCtl,
+                    cursorColor: AppColors.water,
+                    keyboardType: TextInputType.number,
+                    style: AppText.bigNumber.copyWith(fontSize: 22),
+                    onChanged: (v) => setState(() => _ml = int.tryParse(v) ?? _ml),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
-                  Text(
-                    _formatTime(),
+                ),
+                Text('ml',
                     style: AppText.meta.copyWith(
-                        fontSize: 11.5, color: AppColors.textTertiary),
-                  ),
+                        fontSize: 13, color: AppColors.textTertiary)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text('TIME', style: AppText.label.copyWith(fontSize: 11)),
+          const SizedBox(height: 6),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _pickTime,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceHigh,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.stroke),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule_rounded,
+                      size: 16, color: AppColors.water),
+                  const SizedBox(width: 10),
+                  Text(_fmtTime(_time),
+                      style: AppText.body.copyWith(
+                          fontSize: 15, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 18, color: AppColors.textTertiary),
                 ],
               ),
             ),
-            Icon(Icons.chevron_left_rounded,
-                size: 18, color: AppColors.textTertiary),
-          ],
-        ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _delete,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: AppColors.danger.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.delete_outline_rounded,
+                            size: 16, color: AppColors.danger),
+                        const SizedBox(width: 6),
+                        Text('Delete',
+                            style: AppText.body.copyWith(
+                                color: AppColors.danger,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _ml > 0 ? _save : null,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.water,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Text('Save',
+                          style: AppText.body.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

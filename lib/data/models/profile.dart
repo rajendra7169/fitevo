@@ -40,6 +40,13 @@ class Profile {
   int wakeTimeMin = 420;
   int sleepTimeMin = 1380;
 
+  // Optional per-day override. When non-empty, must be length 7 with
+  // entries indexed by weekday (0 = Monday … 6 = Sunday). The single
+  // [wakeTimeMin] / [sleepTimeMin] above stay as the "applies to all"
+  // fallback for users who haven't opted into per-day scheduling.
+  List<int> wakeMinByDay = [];
+  List<int> sleepMinByDay = [];
+
   // Supplements — affects water target (creatine especially) and gives
   // the coach context to make better recommendations.
   int creatineGramsPerDay = 0;
@@ -121,6 +128,20 @@ class Profile {
 
   DateTime createdAt = DateTime.now();
   DateTime updatedAt = DateTime.now();
+
+  /// Wake time for a given DateTime weekday (1 = Mon … 7 = Sun). Falls
+  /// back to [wakeTimeMin] when [wakeMinByDay] isn't a length-7 list.
+  int wakeMinFor(int weekday) {
+    if (wakeMinByDay.length == 7) return wakeMinByDay[weekday - 1];
+    return wakeTimeMin;
+  }
+
+  /// Sleep time for a given DateTime weekday (1 = Mon … 7 = Sun). Falls
+  /// back to [sleepTimeMin] when [sleepMinByDay] isn't a length-7 list.
+  int sleepMinFor(int weekday) {
+    if (sleepMinByDay.length == 7) return sleepMinByDay[weekday - 1];
+    return sleepTimeMin;
+  }
 
   int get effectiveCalorieTarget => calorieOverride ?? calorieTarget;
   int get effectiveProteinTarget => proteinOverride ?? proteinTargetG;

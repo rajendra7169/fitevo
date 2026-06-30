@@ -50,17 +50,20 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
     await settings.setMealTimes(_mealTimes);
 
     // Pull the user's wake/sleep window from Profile so water reminders
-    // only fire when they're awake. Default to 8am-9pm if unset.
+    // only fire when they're awake. Default to 8am-9pm if unset. When
+    // the user has a per-day schedule, use today's row — reminders are
+    // scheduled for one daily cadence, so "today" is the right anchor.
     final profile = await ref.read(profileRepoProvider).getCurrent();
+    final todayWeekday = DateTime.now().weekday;
+    final wakeMin = profile?.wakeMinFor(todayWeekday);
+    final sleepMin = profile?.sleepMinFor(todayWeekday);
     var startHour = 8;
     var endHour = 21;
-    if (profile != null) {
-      final wake = profile.wakeTimeMin;
-      final sleep = profile.sleepTimeMin;
-      if (wake >= 0 && wake <= 1439 && sleep >= 0 && sleep <= 1439) {
-        startHour = wake ~/ 60;
+    if (wakeMin != null && sleepMin != null) {
+      if (wakeMin >= 0 && wakeMin <= 1439 && sleepMin >= 0 && sleepMin <= 1439) {
+        startHour = wakeMin ~/ 60;
         // End an hour before sleep so the user isn't woken to pee.
-        endHour = ((sleep ~/ 60) - 1).clamp(startHour + 1, 23);
+        endHour = ((sleepMin ~/ 60) - 1).clamp(startHour + 1, 23);
       }
     }
 
@@ -70,8 +73,8 @@ class _RemindersPageState extends ConsumerState<RemindersPage> {
         intervalHours: _waterInterval,
         startHour: startHour,
         endHour: endHour,
-        wakeMin: profile?.wakeTimeMin,
-        sleepMin: profile?.sleepTimeMin,
+        wakeMin: wakeMin,
+        sleepMin: sleepMin,
         mealTimesMin: _mealEnabled ? _mealTimes : const [],
       );
     } else {

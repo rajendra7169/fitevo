@@ -1084,16 +1084,16 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                         ),
                       ] else ...[
                         _WorkoutRings(sessions: daySessions),
-                        // Walking/running/cardio logged in the DailyLog
-                        // surfaces here too — gym sessions don't capture
-                        // it, but the home "Today's activity" card does.
-                        if (dayLog != null &&
-                            (dayLog.walkingKmToday > 0 ||
-                                dayLog.runningKmToday > 0 ||
-                                dayLog.otherCardioMinutes > 0)) ...[
-                          const SizedBox(height: 10),
-                          _ActivityKmCard(log: dayLog),
-                        ],
+                      ],
+                      // Walking/running/cardio always visible regardless of
+                      // tab — walking adjusts the calorie target on the food
+                      // tab and is equally relevant on the workout tab.
+                      if (dayLog != null &&
+                          (dayLog.walkingKmToday > 0 ||
+                              dayLog.runningKmToday > 0 ||
+                              dayLog.otherCardioMinutes > 0)) ...[
+                        const SizedBox(height: 10),
+                        _ActivityKmCard(log: dayLog),
                       ],
                       const SizedBox(height: 18),
                       _SummaryCard(

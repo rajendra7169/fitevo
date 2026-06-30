@@ -79,6 +79,98 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
     _loadCachedSummary();
   }
 
+  Future<void> _editActivity(BuildContext ctx, DailyLog? current) async {
+    final walkCtrl = TextEditingController(
+      text: (current?.walkingKmToday ?? 0) > 0
+          ? current!.walkingKmToday.toStringAsFixed(1)
+          : '',
+    );
+    final runCtrl = TextEditingController(
+      text: (current?.runningKmToday ?? 0) > 0
+          ? current!.runningKmToday.toStringAsFixed(1)
+          : '',
+    );
+    final cardioCtrl = TextEditingController(
+      text: (current?.otherCardioMinutes ?? 0) > 0
+          ? '${current!.otherCardioMinutes}'
+          : '',
+    );
+    final saved = await showModalBottomSheet<bool>(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx2, _) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(ctx2).viewInsets.bottom + 32,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Outdoor & Cardio',
+                  style: AppText.sectionTitle),
+              const SizedBox(height: 4),
+              Text('Log activity for this day.',
+                  style: AppText.meta
+                      .copyWith(color: AppColors.textSecondary)),
+              const SizedBox(height: 20),
+              _ActivityInputRow(
+                  ctrl: walkCtrl, label: 'Walking', unit: 'km'),
+              const SizedBox(height: 12),
+              _ActivityInputRow(
+                  ctrl: runCtrl, label: 'Running', unit: 'km'),
+              const SizedBox(height: 12),
+              _ActivityInputRow(
+                  ctrl: cardioCtrl,
+                  label: 'Other cardio',
+                  unit: 'min',
+                  isInt: true),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx2, true),
+                  child: Text('Save',
+                      style: AppText.body.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final walk = double.tryParse(walkCtrl.text.trim()) ?? 0;
+    final run = double.tryParse(runCtrl.text.trim()) ?? 0;
+    final cardio = int.tryParse(cardioCtrl.text.trim()) ?? 0;
+    walkCtrl.dispose();
+    runCtrl.dispose();
+    cardioCtrl.dispose();
+    if (saved == true && mounted) {
+      await ref.read(nutritionRepoProvider).upsertDailyLog(
+            _selectedDate,
+            walkingKmToday: walk,
+            runningKmToday: run,
+            otherCardioMinutes: cardio,
+          );
+    }
+  }
+
   Future<void> _generateSummary({
     required Profile profile,
     required DailyTotals totals,
@@ -1088,13 +1180,20 @@ class _DailyReportPageState extends ConsumerState<DailyReportPage> {
                       // Walking/running/cardio always visible regardless of
                       // tab — walking adjusts the calorie target on the food
                       // tab and is equally relevant on the workout tab.
+                      // Edit button lets users fix or add activity for any day.
+                      const SizedBox(height: 10),
                       if (dayLog != null &&
                           (dayLog.walkingKmToday > 0 ||
                               dayLog.runningKmToday > 0 ||
-                              dayLog.otherCardioMinutes > 0)) ...[
-                        const SizedBox(height: 10),
-                        _ActivityKmCard(log: dayLog),
-                      ],
+                              dayLog.otherCardioMinutes > 0))
+                        _ActivityKmCard(
+                          log: dayLog,
+                          onEdit: () => _editActivity(context, dayLog),
+                        )
+                      else
+                        _AddActivityChip(
+                          onTap: () => _editActivity(context, dayLog),
+                        ),
                       const SizedBox(height: 18),
                       _SummaryCard(
                         loading: _summaryLoading,
@@ -1443,7 +1542,8 @@ class _DayChip extends StatelessWidget {
 
 class _ActivityKmCard extends StatelessWidget {
   final DailyLog log;
-  const _ActivityKmCard({required this.log});
+  final VoidCallback? onEdit;
+  const _ActivityKmCard({required this.log, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -1497,6 +1597,13 @@ class _ActivityKmCard extends StatelessWidget {
               Text('OUTDOOR / CARDIO',
                   style: AppText.label.copyWith(
                       fontSize: 11, letterSpacing: 0.8)),
+              const Spacer(),
+              if (onEdit != null)
+                GestureDetector(
+                  onTap: onEdit,
+                  child: Icon(Icons.edit_rounded,
+                      size: 14, color: AppColors.accent),
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -2857,6 +2964,98 @@ class _EmptyPanel extends StatelessWidget {
                   AppText.body.copyWith(color: AppColors.textTertiary)),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// "Log outdoor activity" chip — shown when no walk/run/cardio is logged
+// for the selected day, letting users retroactively add activity data.
+// ---------------------------------------------------------------------
+
+class _AddActivityChip extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddActivityChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: AppColors.accent.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, size: 16, color: AppColors.accent),
+            const SizedBox(width: 6),
+            Text('Log outdoor / cardio activity',
+                style: AppText.meta
+                    .copyWith(color: AppColors.accent, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Single labelled text-field row used inside the activity editor sheet.
+// ---------------------------------------------------------------------
+
+class _ActivityInputRow extends StatelessWidget {
+  final TextEditingController ctrl;
+  final String label;
+  final String unit;
+  final bool isInt;
+  const _ActivityInputRow({
+    required this.ctrl,
+    required this.label,
+    required this.unit,
+    this.isInt = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label,
+              style: AppText.body
+                  .copyWith(color: AppColors.textSecondary)),
+        ),
+        Expanded(
+          child: TextField(
+            controller: ctrl,
+            keyboardType: const TextInputType.numberWithOptions(
+                decimal: true),
+            style: AppText.body.copyWith(color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: '0',
+              hintStyle:
+                  AppText.body.copyWith(color: AppColors.textTertiary),
+              suffixText: unit,
+              suffixStyle:
+                  AppText.meta.copyWith(color: AppColors.textSecondary),
+              filled: true,
+              fillColor: AppColors.surfaceHigh,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 12),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
